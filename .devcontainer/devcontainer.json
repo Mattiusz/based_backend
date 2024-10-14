@@ -1,0 +1,17 @@
+{
+    "name": "Go Dev Container",
+    "dockerComposeFile": "docker-compose.yml",
+    "service": "myservice",
+    "workspaceFolder": "/workspace",
+    "extensions": [
+        "ms-vscode.go",
+        "google.golangang.tools"
+    ],
+    "settings": {
+        "go.toolsEnvVars": {
+            "GO111MODULE": "on"
+        }
+    },
+    "postCreateCommand": "make dev",
+    "remoteUser": "root"
+}

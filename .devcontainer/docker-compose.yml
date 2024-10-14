@@ -1,0 +1,26 @@
+version: '3.8'
+services:
+  postgres:
+    image: postgis/postgis:13-3.1
+    environment:
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password
+      POSTGRES_DB: myservice_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  myservice:
+    build: .
+    command: sleep infinity
+    volumes:
+      - .:/workspace
+    depends_on:
+      - postgres
+    environment:
+      DATABASE_URL: postgres://user:password@postgres:5432/myservice_db?sslmode=disable
+      GRPC_PORT: "50051"
+
+volumes:
+  postgres_data:
