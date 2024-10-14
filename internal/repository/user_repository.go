@@ -3,8 +3,9 @@ package repository
 import (
 	"context"
 
+	"github.com/cridenour/go-postgis"
+	service "github.com/mattiusz/based_backend/internal/gen/proto/v1"
 	"github.com/mattiusz/based_backend/internal/gen/sqlc"
-	"github.com/mattiusz/based_backend/internal/service"
 )
 
 type UserRepository interface {
@@ -24,17 +25,16 @@ func NewUserRepository(q *sqlc.Queries) UserRepository {
 
 func (r *userRepository) CreateUser(ctx context.Context, req *service.CreateUserRequest) (*service.UserResponse, error) {
 	user, err := r.queries.CreateUser(ctx, sqlc.CreateUserParams{
-		Name:      req.Name,
-		Email:     req.Email,
-		Longitude: req.Longitude,
-		Latitude:  req.Latitude,
+		Name:     req.Name,
+		Email:    req.Email,
+		Location: postgis.Point{X: req.Longitude, Y: req.Latitude},
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	return &service.UserResponse{
-		Id:        user.ID,
+		Id:        user.id,
 		Name:      user.Name,
 		Email:     user.Email,
 		Longitude: user.Longitude,

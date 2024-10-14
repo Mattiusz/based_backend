@@ -14,7 +14,7 @@ import (
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (name, email, location)
 VALUES ($1, $2, $3)
-RETURNING name, email, location
+RETURNING id, name, email, location, created_at
 `
 
 type CreateUserParams struct {
@@ -23,15 +23,15 @@ type CreateUserParams struct {
 	Location postgis.Point `json:"location"`
 }
 
-type CreateUserRow struct {
-	Name     string        `json:"name"`
-	Email    string        `json:"email"`
-	Location postgis.Point `json:"location"`
-}
-
-func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
+func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
 	row := q.db.QueryRow(ctx, createUser, arg.Name, arg.Email, arg.Location)
-	var i CreateUserRow
-	err := row.Scan(&i.Name, &i.Email, &i.Location)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Name,
+		&i.Email,
+		&i.Location,
+		&i.CreatedAt,
+	)
 	return i, err
 }

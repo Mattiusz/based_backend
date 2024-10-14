@@ -3,13 +3,13 @@ package db
 import (
 	"context"
 	"fmt"
-	"time"
 
-	"github.com/jackc/pgx/stdlib"
+	"github.com/golang-migrate/migrate/v4"
+	_ "github.com/golang-migrate/migrate/v4/database/pgx"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mattiusz/based_backend/internal/config"
 	"github.com/mattiusz/based_backend/internal/gen/sqlc"
-	"github.com/pressly/goose/v3"
 )
 
 func NewDB(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
@@ -19,8 +19,8 @@ func NewDB(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
 	}
 
 	// Set connection pool parameters
-	poolConfig.MaxConns = 25
-	poolConfig.MaxConnLifetime = 5 * time.Minute
+	poolConfig.MaxConns = cfg.MaxPoolConns
+	poolConfig.MaxConnLifetime = cfg.MaxConnLifetimeMins
 
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {
@@ -35,23 +35,18 @@ func NewDB(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
 	return pool, nil
 }
 
-func RunMigrations(ctx context.Context, db *pgxpool.Pool) error {
-	conn, err := db.Acquire(ctx)
+func RunMigrations(ctx context.Context, cfg *config.Config) error {
+	m, err := migrate.New("file://./migrations", cfg.DatabaseURL)
 	if err != nil {
-		return fmt.Errorf("failed to acquire connection for migrations: %w", err)
+		return fmt.Errorf("failed to create migrate instance: %w", err)
 	}
-	defer conn.Release()
+	defer m.Close()
 
-	if err := goose.SetDialect("postgres"); err != nil {
-		return err
-	}
-
-	sqlDB := stdlib.OpenDBFromPool(conn)
-	if err != nil {
-		return fmt.Errorf("failed to get standard lib connection: %w", err)
+	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
-	return goose.Up(sqlDB, "./migrations")
+	return nil
 }
 
 func NewQueries(db *pgxpool.Pool) *sqlc.Queries {
