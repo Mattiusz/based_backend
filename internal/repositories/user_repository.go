@@ -7,7 +7,6 @@ import (
 	"github.com/mattiusz/based_backend/internal/gen/sqlc"
 )
 
-// UserRepository interface
 type UserRepository interface {
 	CreateUser(ctx context.Context, req *sqlc.CreateUserParams) (*sqlc.User, error)
 	GetUserByID(ctx context.Context, userID pgtype.UUID) (*sqlc.User, error)
@@ -17,7 +16,6 @@ type repository struct {
 	queries *sqlc.Queries
 }
 
-// User Repository Implementation
 func NewUserRepository(q *sqlc.Queries) UserRepository {
 	return &repository{queries: q}
 }
