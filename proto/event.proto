@@ -1,0 +1,157 @@
+syntax = "proto3";
+
+package api.v1;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+
+option go_package = "github.com/mattiusz/based_backend/pkg/api/v1";
+
+service EventService {
+  rpc CreateEvent(CreateEventRequest) returns (Event);
+  rpc GetEventByID(GetEventByIDRequest) returns (EventDetails);
+  rpc GetNearbyEvents(GetNearbyEventsRequest) returns (GetNearbyEventsResponse);
+  rpc GetUserEvents(GetUserEventsRequest) returns (GetUserEventsResponse);
+  rpc SearchEvents(SearchEventsRequest) returns (SearchEventsResponse);
+  rpc JoinEvent(JoinEventRequest) returns (google.protobuf.Empty);
+  rpc LeaveEvent(LeaveEventRequest) returns (google.protobuf.Empty);
+  rpc UpdateEventStatus(UpdateEventStatusRequest) returns (Event);
+  rpc AddEventCategory(AddEventCategoryRequest) returns (google.protobuf.Empty);
+  rpc GetEventAttendeeStats(GetEventAttendeeStatsRequest) returns (EventAttendeeStats);
+}
+
+message Location {
+  double latitude = 1;
+  double longitude = 2;
+}
+
+message Event {
+  string event_id = 1;
+  string creator_id = 2;
+  string name = 3;
+  Location location = 4;
+  google.protobuf.Timestamp event_datetime = 5;
+  int32 timezone_offset_minutes = 6;
+  int32 max_attendees = 7;
+  string venue = 8;
+  optional string description = 9;
+  optional bytes thumbnail = 10;
+  EventStatus status = 11;
+  int32 age_range_min = 12;
+  int32 age_range_max = 13;
+  bool allow_female = 14;
+  bool allow_male = 15;
+  bool allow_diverse = 16;
+  google.protobuf.Timestamp created_at = 17;
+}
+
+message EventDetails {
+  Event event = 1;
+  repeated string categories = 2;
+  int64 number_of_comments = 3;
+  int64 number_of_attendees = 4;
+}
+
+enum EventStatus {
+  EVENT_STATUS_UNSPECIFIED = 0;
+  EVENT_STATUS_UPCOMING = 1;
+  EVENT_STATUS_ONGOING = 2;
+  EVENT_STATUS_COMPLETED = 3;
+  EVENT_STATUS_CANCELLED = 4;
+}
+
+enum EventCategory {
+  EVENT_CATEGORY_UNSPECIFIED = 0;
+  EVENT_CATEGORY_SPORTS = 1;
+  EVENT_CATEGORY_MUSIC = 2;
+  EVENT_CATEGORY_FOOD = 3;
+  EVENT_CATEGORY_ARTS = 4;
+  EVENT_CATEGORY_EDUCATION = 5;
+  EVENT_CATEGORY_SOCIAL = 6;
+  EVENT_CATEGORY_BUSINESS = 7;
+  EVENT_CATEGORY_OTHER = 8;
+}
+
+message CreateEventRequest {
+  string creator_id = 1;
+  string name = 2;
+  Location location = 3;
+  google.protobuf.Timestamp event_datetime = 4;
+  int32 timezone_offset_minutes = 5;
+  int32 max_attendees = 6;
+  string venue = 7;
+  string description = 8;
+  repeated EventCategory categories = 9;
+  int32 age_range_min = 10;
+  int32 age_range_max = 11;
+  bool allow_female = 12;
+  bool allow_male = 13;
+  bool allow_diverse = 14;
+}
+
+message GetEventByIDRequest {
+  string event_id = 1;
+}
+
+message GetNearbyEventsRequest {
+  Location location = 1;
+  double radius_meters = 2;
+  int32 limit = 3;
+}
+
+message GetNearbyEventsResponse {
+  repeated EventWithDistance events = 1;
+}
+
+message EventWithDistance {
+  Event event = 1;
+  double distance_meters = 2;
+}
+
+message GetUserEventsRequest {
+  string user_id = 1;
+}
+
+message GetUserEventsResponse {
+  repeated Event events = 1;
+}
+
+message SearchEventsRequest {
+  string query = 1;
+  int32 limit = 2;
+  int32 offset = 3;
+}
+
+message SearchEventsResponse {
+  repeated EventDetails events = 1;
+}
+
+message JoinEventRequest {
+  string event_id = 1;
+  string user_id = 2;
+}
+
+message LeaveEventRequest {
+  string event_id = 1;
+  string user_id = 2;
+}
+
+message UpdateEventStatusRequest {
+  string event_id = 1;
+  EventStatus status = 2;
+}
+
+message AddEventCategoryRequest {
+  string event_id = 1;
+  EventCategory category = 2;
+}
+
+message GetEventAttendeeStatsRequest {
+  string event_id = 1;
+}
+
+message EventAttendeeStats {
+  int64 female_count = 1;
+  int64 male_count = 2;
+  int64 diverse_count = 3;
+}

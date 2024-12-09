@@ -34,7 +34,9 @@ func main() {
 
 	// Initialize queries and repository
 	queries := db.NewQueries(dbPool)
-	repo := repository.NewUserRepository(queries)
+	user_repo := repository.NewUserRepository(queries)
+	event_repo := repository.NewEventRepository(queries)
+	chat_repo := repository.NewChatRepository(queries)
 
 	// Initialize gRPC server
 	grpcServer := grpc.NewServer()

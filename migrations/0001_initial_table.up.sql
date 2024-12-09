@@ -89,7 +89,6 @@ CREATE INDEX idx_event_attendees_event ON event_attendees(event_id);
 CREATE INDEX idx_message_likes_message ON message_likes(message_id);
 
 -- Create spatial indexes for location queries
-CREATE INDEX idx_users_location ON users USING GIST(location);
 CREATE INDEX idx_events_location ON events USING GIST(location);
 
 -- Create statistics views

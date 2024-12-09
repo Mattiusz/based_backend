@@ -6,6 +6,8 @@ DB_URL ?= postgres://user:password@postgres:5432/myservice_db?sslmode=disable
 PROTO_DIR=proto
 SQLC_CONFIG=sqlc.yaml
 MIGRATIONS_DIR=./migrations
+GRPC_OUT_DIR=./internal/gen/proto
+PROTO_OUT_DIR=./internal/gen/proto
 
 all: build
 
@@ -26,6 +28,7 @@ sqlc:
 	sqlc generate
 
 protoc:
-	protoc --go_out=. --go-grpc_out=. $(PROTO_DIR)/*.proto
+	protoc -I proto/ --go_out=$(PROTO_OUT_DIR) --go_opt=paths=source_relative --go-grpc_out=$(GRPC_OUT_DIR) --go-grpc_opt=paths=source_relative $(PROTO_DIR)/*.proto
 
 dev: sqlc protoc
+
