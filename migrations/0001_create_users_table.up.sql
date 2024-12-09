@@ -1,9 +1,0 @@
-CREATE EXTENSION IF NOT EXISTS postgis;
-
-CREATE TABLE users (
-    id SERIAL PRIMARY KEY,
-    name VARCHAR(100) NOT NULL,
-    email VARCHAR(100) UNIQUE NOT NULL,
-    location geometry(Point, 4326) NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
-);

@@ -7,7 +7,7 @@ import (
 
 	"github.com/mattiusz/based_backend/internal/config"
 	"github.com/mattiusz/based_backend/internal/db"
-	"github.com/mattiusz/based_backend/internal/repository"
+	repository "github.com/mattiusz/based_backend/internal/repositories"
 	"google.golang.org/grpc"
 )
 

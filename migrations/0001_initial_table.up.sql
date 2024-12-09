@@ -1,0 +1,103 @@
+-- Enable required extensions
+CREATE EXTENSION IF NOT EXISTS postgis;
+
+-- Enum types
+CREATE TYPE gender_type AS ENUM ('male', 'female', 'diverse');
+CREATE TYPE event_status_type AS ENUM ('upcoming', 'ongoing', 'past', 'rescheduled', 'cancelled');
+CREATE TYPE event_category_type AS ENUM (
+    'sports', 'musicAndMovies', 'art', 'foodAndDrinks', 'party',
+    'games', 'nature', 'technology', 'travel', 'education', 'charity', 'other'
+);
+
+-- Users table
+CREATE TABLE users (
+    user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name VARCHAR(100) NOT NULL,
+    birthday DATE NOT NULL,
+    gender gender_type NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Events table
+CREATE TABLE events (
+    event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    creator_id UUID NOT NULL REFERENCES users(user_id),
+    name VARCHAR(200) NOT NULL,
+    location geometry(Point, 4326) NOT NULL,
+    event_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
+    timezone_offset_minutes INTEGER NOT NULL,
+    max_attendees INTEGER NOT NULL CHECK (max_attendees >= 0),
+    venue VARCHAR(200),
+    description TEXT,
+    thumbnail BYTEA,
+    status event_status_type DEFAULT 'upcoming',
+    age_range_min INTEGER CHECK (age_range_min >= 0),
+    age_range_max INTEGER CHECK (age_range_max >= age_range_min),
+    allow_female BOOLEAN NOT NULL DEFAULT true,
+    allow_male BOOLEAN NOT NULL DEFAULT tue,
+    allow_diverse BOOLEAN NOT NULL DEFAULT true,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    
+    CONSTRAINT valid_age_range CHECK (
+        (age_range_min IS NULL AND age_range_max IS NULL) OR
+        (age_range_min IS NOT NULL AND age_range_max IS NOT NULL)
+    )
+);
+
+-- Event categories (many-to-many relationship)
+CREATE TABLE event_categories (
+    event_id UUID REFERENCES events(event_id) ON DELETE CASCADE,
+    category event_category_type NOT NULL,
+    PRIMARY KEY (event_id, category)
+);
+
+-- Event attendees with gender tracking
+CREATE TABLE event_attendees (
+    event_id UUID REFERENCES events(event_id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+    gender gender_type NOT NULL,
+    joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    PRIMARY KEY (event_id, user_id)
+);
+
+-- Chat messages
+CREATE TABLE chat_messages (
+    message_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    event_id UUID REFERENCES events(event_id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+    comment TEXT NOT NULL,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    message_index INTEGER,
+    UNIQUE (event_id, message_index)
+);
+
+-- Message likes
+CREATE TABLE message_likes (
+    message_id UUID REFERENCES chat_messages(message_id) ON DELETE CASCADE,
+    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    PRIMARY KEY (message_id, user_id)
+);
+
+-- Create indexes for better query performance
+CREATE INDEX idx_events_creator ON events(creator_id);
+CREATE INDEX idx_events_datetime ON events(event_datetime);
+CREATE INDEX idx_events_status ON events(status);
+CREATE INDEX idx_chat_messages_event ON chat_messages(event_id);
+CREATE INDEX idx_event_attendees_user ON event_attendees(user_id);
+CREATE INDEX idx_event_attendees_event ON event_attendees(event_id);
+CREATE INDEX idx_message_likes_message ON message_likes(message_id);
+
+-- Create spatial indexes for location queries
+CREATE INDEX idx_users_location ON users USING GIST(location);
+CREATE INDEX idx_events_location ON events USING GIST(location);
+
+-- Create statistics views
+CREATE VIEW event_attendee_statistics AS
+SELECT 
+    event_id,
+    COUNT(CASE WHEN gender = 'female' THEN 1 END) as female_count,
+    COUNT(CASE WHEN gender = 'male' THEN 1 END) as male_count,
+    COUNT(CASE WHEN gender = 'diverse' THEN 1 END) as diverse_count
+FROM event_attendees
+GROUP BY event_id;

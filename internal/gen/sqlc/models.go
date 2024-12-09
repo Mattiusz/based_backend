@@ -5,14 +5,211 @@
 package sqlc
 
 import (
+	"database/sql/driver"
+	"fmt"
+
 	"github.com/cridenour/go-postgis"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+type EventCategoryType string
+
+const (
+	EventCategoryTypeSports         EventCategoryType = "sports"
+	EventCategoryTypeMusicAndMovies EventCategoryType = "musicAndMovies"
+	EventCategoryTypeArt            EventCategoryType = "art"
+	EventCategoryTypeFoodAndDrinks  EventCategoryType = "foodAndDrinks"
+	EventCategoryTypeParty          EventCategoryType = "party"
+	EventCategoryTypeGames          EventCategoryType = "games"
+	EventCategoryTypeNature         EventCategoryType = "nature"
+	EventCategoryTypeTechnology     EventCategoryType = "technology"
+	EventCategoryTypeTravel         EventCategoryType = "travel"
+	EventCategoryTypeEducation      EventCategoryType = "education"
+	EventCategoryTypeCharity        EventCategoryType = "charity"
+	EventCategoryTypeOther          EventCategoryType = "other"
+)
+
+func (e *EventCategoryType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = EventCategoryType(s)
+	case string:
+		*e = EventCategoryType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for EventCategoryType: %T", src)
+	}
+	return nil
+}
+
+type NullEventCategoryType struct {
+	EventCategoryType EventCategoryType `json:"event_category_type"`
+	Valid             bool              `json:"valid"` // Valid is true if EventCategoryType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullEventCategoryType) Scan(value interface{}) error {
+	if value == nil {
+		ns.EventCategoryType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.EventCategoryType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullEventCategoryType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.EventCategoryType), nil
+}
+
+type EventStatusType string
+
+const (
+	EventStatusTypeUpcoming    EventStatusType = "upcoming"
+	EventStatusTypeOngoing     EventStatusType = "ongoing"
+	EventStatusTypePast        EventStatusType = "past"
+	EventStatusTypeRescheduled EventStatusType = "rescheduled"
+	EventStatusTypeCancelled   EventStatusType = "cancelled"
+)
+
+func (e *EventStatusType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = EventStatusType(s)
+	case string:
+		*e = EventStatusType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for EventStatusType: %T", src)
+	}
+	return nil
+}
+
+type NullEventStatusType struct {
+	EventStatusType EventStatusType `json:"event_status_type"`
+	Valid           bool            `json:"valid"` // Valid is true if EventStatusType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullEventStatusType) Scan(value interface{}) error {
+	if value == nil {
+		ns.EventStatusType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.EventStatusType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullEventStatusType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.EventStatusType), nil
+}
+
+type GenderType string
+
+const (
+	GenderTypeMale    GenderType = "male"
+	GenderTypeFemale  GenderType = "female"
+	GenderTypeDiverse GenderType = "diverse"
+)
+
+func (e *GenderType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = GenderType(s)
+	case string:
+		*e = GenderType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for GenderType: %T", src)
+	}
+	return nil
+}
+
+type NullGenderType struct {
+	GenderType GenderType `json:"gender_type"`
+	Valid      bool       `json:"valid"` // Valid is true if GenderType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullGenderType) Scan(value interface{}) error {
+	if value == nil {
+		ns.GenderType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.GenderType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullGenderType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.GenderType), nil
+}
+
+type ChatMessage struct {
+	MessageID    pgtype.UUID        `json:"message_id"`
+	EventID      pgtype.UUID        `json:"event_id"`
+	UserID       pgtype.UUID        `json:"user_id"`
+	Comment      string             `json:"comment"`
+	Timestamp    pgtype.Timestamptz `json:"timestamp"`
+	MessageIndex pgtype.Int4        `json:"message_index"`
+}
+
+type Event struct {
+	EventID               pgtype.UUID         `json:"event_id"`
+	CreatorID             pgtype.UUID         `json:"creator_id"`
+	Name                  string              `json:"name"`
+	Location              postgis.Point       `json:"location"`
+	EventDatetime         pgtype.Timestamptz  `json:"event_datetime"`
+	TimezoneOffsetMinutes int32               `json:"timezone_offset_minutes"`
+	MaxAttendees          int32               `json:"max_attendees"`
+	Venue                 pgtype.Text         `json:"venue"`
+	Description           pgtype.Text         `json:"description"`
+	Thumbnail             []byte              `json:"thumbnail"`
+	Status                NullEventStatusType `json:"status"`
+	AgeRangeMin           pgtype.Int4         `json:"age_range_min"`
+	AgeRangeMax           pgtype.Int4         `json:"age_range_max"`
+	AllowFemale           bool                `json:"allow_female"`
+	AllowMale             bool                `json:"allow_male"`
+	AllowDiverse          bool                `json:"allow_diverse"`
+	CreatedAt             pgtype.Timestamptz  `json:"created_at"`
+}
+
+type EventAttendee struct {
+	EventID  pgtype.UUID        `json:"event_id"`
+	UserID   pgtype.UUID        `json:"user_id"`
+	Gender   GenderType         `json:"gender"`
+	JoinedAt pgtype.Timestamptz `json:"joined_at"`
+}
+
+type EventAttendeeStatistic struct {
+	EventID      pgtype.UUID `json:"event_id"`
+	FemaleCount  int64       `json:"female_count"`
+	MaleCount    int64       `json:"male_count"`
+	DiverseCount int64       `json:"diverse_count"`
+}
+
+type EventCategory struct {
+	EventID  pgtype.UUID       `json:"event_id"`
+	Category EventCategoryType `json:"category"`
+}
+
+type MessageLike struct {
+	MessageID pgtype.UUID        `json:"message_id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+}
+
 type User struct {
-	ID        int32              `json:"id"`
+	UserID    pgtype.UUID        `json:"user_id"`
 	Name      string             `json:"name"`
-	Email     string             `json:"email"`
-	Location  postgis.Point      `json:"location"`
+	Birthday  pgtype.Date        `json:"birthday"`
+	Gender    GenderType         `json:"gender"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
 }
