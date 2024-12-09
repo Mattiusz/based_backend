@@ -9,7 +9,6 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mattiusz/based_backend/internal/config"
-	"github.com/mattiusz/based_backend/internal/gen/sqlc"
 )
 
 func NewDB(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
@@ -47,8 +46,4 @@ func RunMigrations(ctx context.Context, cfg *config.Config) error {
 	}
 
 	return nil
-}
-
-func NewQueries(db *pgxpool.Pool) *sqlc.Queries {
-	return sqlc.New(db)
 }

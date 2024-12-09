@@ -7,6 +7,7 @@ import (
 
 	"github.com/mattiusz/based_backend/internal/config"
 	"github.com/mattiusz/based_backend/internal/db"
+	"github.com/mattiusz/based_backend/internal/gen/sqlc"
 	repository "github.com/mattiusz/based_backend/internal/repositories"
 	"google.golang.org/grpc"
 )
@@ -33,7 +34,7 @@ func main() {
 	}
 
 	// Initialize queries and repository
-	queries := db.NewQueries(dbPool)
+	queries := sqlc.New(dbPool)
 	user_repo := repository.NewUserRepository(queries)
 	event_repo := repository.NewEventRepository(queries)
 	chat_repo := repository.NewChatRepository(queries)
