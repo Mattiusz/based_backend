@@ -5,7 +5,7 @@ package api.v1;
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
 
-option go_package = "github.com/mattiusz/based_backend/pkg/api/v1";
+option go_package = "github.com/mattiusz/based_backend/internal/gen/proto/v1";
 
 service EventService {
   rpc CreateEvent(CreateEventRequest) returns (Event);
@@ -26,8 +26,8 @@ message Location {
 }
 
 message Event {
-  string event_id = 1;
-  string creator_id = 2;
+  bytes event_id = 1;
+  bytes creator_id = 2;
   string name = 3;
   Location location = 4;
   google.protobuf.Timestamp event_datetime = 5;
@@ -73,7 +73,7 @@ enum EventCategory {
 }
 
 message CreateEventRequest {
-  string creator_id = 1;
+  bytes creator_id = 1;
   string name = 2;
   Location location = 3;
   google.protobuf.Timestamp event_datetime = 4;
@@ -90,7 +90,7 @@ message CreateEventRequest {
 }
 
 message GetEventByIDRequest {
-  string event_id = 1;
+  bytes event_id = 1;
 }
 
 message GetNearbyEventsRequest {
@@ -109,7 +109,7 @@ message EventWithDistance {
 }
 
 message GetUserEventsRequest {
-  string user_id = 1;
+  bytes user_id = 1;
 }
 
 message GetUserEventsResponse {
@@ -127,27 +127,27 @@ message SearchEventsResponse {
 }
 
 message JoinEventRequest {
-  string event_id = 1;
-  string user_id = 2;
+  bytes event_id = 1;
+  bytes user_id = 2;
 }
 
 message LeaveEventRequest {
-  string event_id = 1;
-  string user_id = 2;
+  bytes event_id = 1;
+  bytes user_id = 2;
 }
 
 message UpdateEventStatusRequest {
-  string event_id = 1;
+  bytes event_id = 1;
   EventStatus status = 2;
 }
 
 message AddEventCategoryRequest {
-  string event_id = 1;
+  bytes event_id = 1;
   EventCategory category = 2;
 }
 
 message GetEventAttendeeStatsRequest {
-  string event_id = 1;
+  bytes event_id = 1;
 }
 
 message EventAttendeeStats {

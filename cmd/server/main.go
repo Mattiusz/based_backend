@@ -7,8 +7,10 @@ import (
 
 	"github.com/mattiusz/based_backend/internal/config"
 	"github.com/mattiusz/based_backend/internal/db"
+	v1 "github.com/mattiusz/based_backend/internal/gen/proto"
 	"github.com/mattiusz/based_backend/internal/gen/sqlc"
 	repository "github.com/mattiusz/based_backend/internal/repositories"
+	"github.com/mattiusz/based_backend/internal/services"
 	"google.golang.org/grpc"
 )
 
@@ -35,13 +37,18 @@ func main() {
 
 	// Initialize queries and repository
 	queries := sqlc.New(dbPool)
-	user_repo := repository.NewUserRepository(queries)
-	event_repo := repository.NewEventRepository(queries)
-	chat_repo := repository.NewChatRepository(queries)
+	userRepo := repository.NewUserRepository(queries)
+	chatRepo := repository.NewChatRepository(queries)
+	eventRepo := repository.NewEventRepository(queries)
+
+	// Initialite services
+	userService := services.NewUserService(userRepo)
+	chatService := services.NewChatService(chatRepo)
 
 	// Initialize gRPC server
 	grpcServer := grpc.NewServer()
-	service.RegisterUserServiceServer(grpcServer, service.NewUserService(repo))
+	v1.RegisterUserServiceServer(grpcServer, userService)
+	v1.RegisterChatServiceServer(grpcServer, chatService)
 
 	// Listen on the configured port
 	listener, err := net.Listen("tcp", ":"+cfg.GRPCPort)

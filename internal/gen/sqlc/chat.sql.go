@@ -63,7 +63,7 @@ type GetEventMessagesRow struct {
 	UserID        pgtype.UUID        `json:"user_id"`
 	Comment       string             `json:"comment"`
 	Timestamp     pgtype.Timestamptz `json:"timestamp"`
-	MessageIndex  pgtype.Int4        `json:"message_index"`
+	MessageIndex  int32              `json:"message_index"`
 	NumberOfLikes int64              `json:"number_of_likes"`
 	IsLikedByUser bool               `json:"is_liked_by_user"`
 }

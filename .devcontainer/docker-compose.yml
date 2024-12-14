@@ -1,26 +1,56 @@
-version: '3.8'
 services:
   postgres:
-    image: postgis/postgis:13-3.1
+    image: postgis/postgis:17-master
+    container_name: postgres
     environment:
       POSTGRES_USER: user
       POSTGRES_PASSWORD: password
       POSTGRES_DB: myservice_db
+      # Required for Supabase Studio
+      POSTGRES_PORT: 5432
     ports:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d myservice_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
-  myservice:
-    build: .
-    command: sleep infinity
-    volumes:
-      - .:/workspace
+  studio:
+    image: supabase/studio:latest
+    container_name: supabase-studio
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     environment:
-      DATABASE_URL: postgres://user:password@postgres:5432/myservice_db?sslmode=disable
-      GRPC_PORT: "50051"
+      STUDIO_PG_META_URL: http://meta:8080
+      POSTGRES_PASSWORD: password
+      DEFAULT_ORGANIZATION: Default Organization
+      DEFAULT_PROJECT: Default Project
+      SUPABASE_URL: http://kong:8000
+      SUPABASE_PUBLIC_URL: http://localhost:8000
+      SUPABASE_ANON_KEY: your-anon-key
+      SUPABASE_SERVICE_KEY: your-service-key
+    ports:
+      - "3000:3000"
+
+  meta:
+    image: supabase/postgres-meta:v0.85.0
+    container_name: supabase-meta
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PG_META_PORT: 8080
+      PG_META_DB_HOST: postgres
+      PG_META_DB_PASSWORD: password
+      PG_META_DB_PORT: 5432
+      PG_META_DB_USER: user
+      PG_META_DB_NAME: myservice_db
+    ports:
+      - "8080:8080"
 
 volumes:
   postgres_data:

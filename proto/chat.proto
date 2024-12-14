@@ -5,7 +5,7 @@ package api.v1;
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
 
-option go_package = "github.com/mattiusz/based_backend/pkg/api/v1";
+option go_package = "github.com/mattiusz/based_backend/internal/gen/proto/v1";
 
 service ChatService {
   rpc CreateMessage(CreateMessageRequest) returns (ChatMessage);
@@ -16,25 +16,25 @@ service ChatService {
 }
 
 message ChatMessage {
-  string message_id = 1;
-  string event_id = 2;
-  string user_id = 3;
+  bytes message_id = 1;
+  bytes event_id = 2;
+  bytes user_id = 3;
   string comment = 4;
   google.protobuf.Timestamp timestamp = 5;
   int32 message_index = 6;
-  int64 number_of_likes = 7;
+  int32 number_of_likes = 7;
   bool is_liked_by_user = 8;
 }
 
 message CreateMessageRequest {
-  string event_id = 1;
-  string user_id = 2;
+  bytes event_id = 1;
+  bytes user_id = 2;
   string comment = 3;
 }
 
 message GetEventMessagesRequest {
-  string event_id = 1;
-  string user_id = 2;
+  bytes event_id = 1;
+  bytes user_id = 2;
 }
 
 message GetEventMessagesResponse {
@@ -42,16 +42,16 @@ message GetEventMessagesResponse {
 }
 
 message LikeMessageRequest {
-  string message_id = 1;
-  string user_id = 2;
+  bytes message_id = 1;
+  bytes user_id = 2;
 }
 
 message UnlikeMessageRequest {
-  string message_id = 1;
-  string user_id = 2;
+  bytes message_id = 1;
+  bytes user_id = 2;
 }
 
 message StreamEventMessagesRequest {
-  string event_id = 1;
-  string user_id = 2;
+  bytes event_id = 1;
+  bytes user_id = 2;
 }
