@@ -85,9 +85,9 @@ func (s *userService) UpdateUser(ctx context.Context, req *pb.UpdateUserRequest)
 		return nil, status.Error(codes.InvalidArgument, "user_id is required")
 	}
 
-	var userID pgtype.UUID
-	if err := userID.Scan(req.UserId); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid user ID format: %v", err)
+	userID := pgtype.UUID{
+		Bytes: [16]byte(req.UserId),
+		Valid: true,
 	}
 
 	user, err := s.userRepo.GetUserByID(ctx, userID)
@@ -96,14 +96,13 @@ func (s *userService) UpdateUser(ctx context.Context, req *pb.UpdateUserRequest)
 	}
 
 	params := &sqlc.UpdateUserParams{
-		Name:     req.DisplayName,
-		Birthday: pgtype.Date{Time: req.Birthday.AsTime(), Valid: req.Birthday != nil},
-		Gender:   user.Gender,
+		Name:   req.DisplayName,
+		Gender: user.Gender,
 	}
 
 	updated_user, err := s.userRepo.UpdateUser(ctx, params)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to create user: %v", err)
+		return nil, status.Errorf(codes.Internal, "failed to update user: %v", err)
 	}
 
 	gender_pb, err := convertSQLGenderToPB(updated_user.Gender)
@@ -119,14 +118,14 @@ func (s *userService) UpdateUser(ctx context.Context, req *pb.UpdateUserRequest)
 
 }
 
-func (s *userService) GetUserByID(ctx context.Context, req *pb.GetUserRequest) (*pb.User, error) {
+func (s *userService) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.User, error) {
 	if len(req.UserId) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "user_id is required")
 	}
 
-	var userID pgtype.UUID
-	if err := userID.Scan(req.UserId); err != nil {
-		return nil, status.Errorf(codes.InvalidArgument, "invalid user ID format: %v", err)
+	userID := pgtype.UUID{
+		Bytes: [16]byte(req.UserId),
+		Valid: true,
 	}
 
 	user, err := s.userRepo.GetUserByID(ctx, userID)

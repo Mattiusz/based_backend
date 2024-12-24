@@ -135,26 +135,26 @@ GROUP BY e.event_id
 `
 
 type GetEventByIDRow struct {
-	EventID               pgtype.UUID         `json:"event_id"`
-	CreatorID             pgtype.UUID         `json:"creator_id"`
-	Name                  string              `json:"name"`
-	Location              postgis.Point       `json:"location"`
-	EventDatetime         pgtype.Timestamptz  `json:"event_datetime"`
-	TimezoneOffsetMinutes int32               `json:"timezone_offset_minutes"`
-	MaxAttendees          int32               `json:"max_attendees"`
-	Venue                 pgtype.Text         `json:"venue"`
-	Description           pgtype.Text         `json:"description"`
-	Thumbnail             []byte              `json:"thumbnail"`
-	Status                NullEventStatusType `json:"status"`
-	AgeRangeMin           pgtype.Int4         `json:"age_range_min"`
-	AgeRangeMax           pgtype.Int4         `json:"age_range_max"`
-	AllowFemale           bool                `json:"allow_female"`
-	AllowMale             bool                `json:"allow_male"`
-	AllowDiverse          bool                `json:"allow_diverse"`
-	CreatedAt             pgtype.Timestamptz  `json:"created_at"`
-	Categories            []byte              `json:"categories"`
-	NumberOfComments      int64               `json:"number_of_comments"`
-	NumberOfAttendees     int64               `json:"number_of_attendees"`
+	EventID               pgtype.UUID        `json:"event_id"`
+	CreatorID             pgtype.UUID        `json:"creator_id"`
+	Name                  string             `json:"name"`
+	Location              postgis.Point      `json:"location"`
+	EventDatetime         pgtype.Timestamptz `json:"event_datetime"`
+	TimezoneOffsetMinutes int32              `json:"timezone_offset_minutes"`
+	MaxAttendees          int32              `json:"max_attendees"`
+	Venue                 pgtype.Text        `json:"venue"`
+	Description           pgtype.Text        `json:"description"`
+	Thumbnail             []byte             `json:"thumbnail"`
+	Status                EventStatusType    `json:"status"`
+	AgeRangeMin           pgtype.Int4        `json:"age_range_min"`
+	AgeRangeMax           pgtype.Int4        `json:"age_range_max"`
+	AllowFemale           bool               `json:"allow_female"`
+	AllowMale             bool               `json:"allow_male"`
+	AllowDiverse          bool               `json:"allow_diverse"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	Categories            []byte             `json:"categories"`
+	NumberOfComments      int64              `json:"number_of_comments"`
+	NumberOfAttendees     int64              `json:"number_of_attendees"`
 }
 
 func (q *Queries) GetEventByID(ctx context.Context, eventID pgtype.UUID) (GetEventByIDRow, error) {
@@ -223,22 +223,22 @@ type GetNearbyEventsParams struct {
 }
 
 type GetNearbyEventsRow struct {
-	EventID               pgtype.UUID         `json:"event_id"`
-	CreatorID             pgtype.UUID         `json:"creator_id"`
-	Name                  string              `json:"name"`
-	Location              postgis.Point       `json:"location"`
-	EventDatetime         pgtype.Timestamptz  `json:"event_datetime"`
-	TimezoneOffsetMinutes int32               `json:"timezone_offset_minutes"`
-	MaxAttendees          int32               `json:"max_attendees"`
-	Venue                 pgtype.Text         `json:"venue"`
-	Status                NullEventStatusType `json:"status"`
-	AgeRangeMin           pgtype.Int4         `json:"age_range_min"`
-	AgeRangeMax           pgtype.Int4         `json:"age_range_max"`
-	AllowFemale           bool                `json:"allow_female"`
-	AllowMale             bool                `json:"allow_male"`
-	AllowDiverse          bool                `json:"allow_diverse"`
-	CreatedAt             pgtype.Timestamptz  `json:"created_at"`
-	DistanceMeters        interface{}         `json:"distance_meters"`
+	EventID               pgtype.UUID        `json:"event_id"`
+	CreatorID             pgtype.UUID        `json:"creator_id"`
+	Name                  string             `json:"name"`
+	Location              postgis.Point      `json:"location"`
+	EventDatetime         pgtype.Timestamptz `json:"event_datetime"`
+	TimezoneOffsetMinutes int32              `json:"timezone_offset_minutes"`
+	MaxAttendees          int32              `json:"max_attendees"`
+	Venue                 pgtype.Text        `json:"venue"`
+	Status                EventStatusType    `json:"status"`
+	AgeRangeMin           pgtype.Int4        `json:"age_range_min"`
+	AgeRangeMax           pgtype.Int4        `json:"age_range_max"`
+	AllowFemale           bool               `json:"allow_female"`
+	AllowMale             bool               `json:"allow_male"`
+	AllowDiverse          bool               `json:"allow_diverse"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	DistanceMeters        interface{}        `json:"distance_meters"`
 }
 
 func (q *Queries) GetNearbyEvents(ctx context.Context, arg GetNearbyEventsParams) ([]GetNearbyEventsRow, error) {
@@ -386,24 +386,24 @@ type SearchEventsParams struct {
 }
 
 type SearchEventsRow struct {
-	EventID               pgtype.UUID         `json:"event_id"`
-	CreatorID             pgtype.UUID         `json:"creator_id"`
-	Name                  string              `json:"name"`
-	Location              postgis.Point       `json:"location"`
-	EventDatetime         pgtype.Timestamptz  `json:"event_datetime"`
-	TimezoneOffsetMinutes int32               `json:"timezone_offset_minutes"`
-	MaxAttendees          int32               `json:"max_attendees"`
-	Venue                 pgtype.Text         `json:"venue"`
-	Description           pgtype.Text         `json:"description"`
-	Thumbnail             []byte              `json:"thumbnail"`
-	Status                NullEventStatusType `json:"status"`
-	AgeRangeMin           pgtype.Int4         `json:"age_range_min"`
-	AgeRangeMax           pgtype.Int4         `json:"age_range_max"`
-	AllowFemale           bool                `json:"allow_female"`
-	AllowMale             bool                `json:"allow_male"`
-	AllowDiverse          bool                `json:"allow_diverse"`
-	CreatedAt             pgtype.Timestamptz  `json:"created_at"`
-	Categories            []byte              `json:"categories"`
+	EventID               pgtype.UUID        `json:"event_id"`
+	CreatorID             pgtype.UUID        `json:"creator_id"`
+	Name                  string             `json:"name"`
+	Location              postgis.Point      `json:"location"`
+	EventDatetime         pgtype.Timestamptz `json:"event_datetime"`
+	TimezoneOffsetMinutes int32              `json:"timezone_offset_minutes"`
+	MaxAttendees          int32              `json:"max_attendees"`
+	Venue                 pgtype.Text        `json:"venue"`
+	Description           pgtype.Text        `json:"description"`
+	Thumbnail             []byte             `json:"thumbnail"`
+	Status                EventStatusType    `json:"status"`
+	AgeRangeMin           pgtype.Int4        `json:"age_range_min"`
+	AgeRangeMax           pgtype.Int4        `json:"age_range_max"`
+	AllowFemale           bool               `json:"allow_female"`
+	AllowMale             bool               `json:"allow_male"`
+	AllowDiverse          bool               `json:"allow_diverse"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
+	Categories            []byte             `json:"categories"`
 }
 
 func (q *Queries) SearchEvents(ctx context.Context, arg SearchEventsParams) ([]SearchEventsRow, error) {
@@ -453,8 +453,8 @@ RETURNING event_id, creator_id, name, location, event_datetime, timezone_offset_
 `
 
 type UpdateEventStatusParams struct {
-	EventID pgtype.UUID         `json:"event_id"`
-	Status  NullEventStatusType `json:"status"`
+	EventID pgtype.UUID     `json:"event_id"`
+	Status  EventStatusType `json:"status"`
 }
 
 func (q *Queries) UpdateEventStatus(ctx context.Context, arg UpdateEventStatusParams) (Event, error) {

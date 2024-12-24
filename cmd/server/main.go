@@ -44,11 +44,13 @@ func main() {
 	// Initialite services
 	userService := services.NewUserService(userRepo)
 	chatService := services.NewChatService(chatRepo)
+	eventService := services.NewEventService(eventRepo)
 
 	// Initialize gRPC server
 	grpcServer := grpc.NewServer()
 	v1.RegisterUserServiceServer(grpcServer, userService)
 	v1.RegisterChatServiceServer(grpcServer, chatService)
+	v1.RegisterEventServiceServer(grpcServer, eventService)
 
 	// Listen on the configured port
 	listener, err := net.Listen("tcp", ":"+cfg.GRPCPort)

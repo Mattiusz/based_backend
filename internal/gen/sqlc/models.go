@@ -162,23 +162,23 @@ type ChatMessage struct {
 }
 
 type Event struct {
-	EventID               pgtype.UUID         `json:"event_id"`
-	CreatorID             pgtype.UUID         `json:"creator_id"`
-	Name                  string              `json:"name"`
-	Location              postgis.Point       `json:"location"`
-	EventDatetime         pgtype.Timestamptz  `json:"event_datetime"`
-	TimezoneOffsetMinutes int32               `json:"timezone_offset_minutes"`
-	MaxAttendees          int32               `json:"max_attendees"`
-	Venue                 pgtype.Text         `json:"venue"`
-	Description           pgtype.Text         `json:"description"`
-	Thumbnail             []byte              `json:"thumbnail"`
-	Status                NullEventStatusType `json:"status"`
-	AgeRangeMin           pgtype.Int4         `json:"age_range_min"`
-	AgeRangeMax           pgtype.Int4         `json:"age_range_max"`
-	AllowFemale           bool                `json:"allow_female"`
-	AllowMale             bool                `json:"allow_male"`
-	AllowDiverse          bool                `json:"allow_diverse"`
-	CreatedAt             pgtype.Timestamptz  `json:"created_at"`
+	EventID               pgtype.UUID        `json:"event_id"`
+	CreatorID             pgtype.UUID        `json:"creator_id"`
+	Name                  string             `json:"name"`
+	Location              postgis.Point      `json:"location"`
+	EventDatetime         pgtype.Timestamptz `json:"event_datetime"`
+	TimezoneOffsetMinutes int32              `json:"timezone_offset_minutes"`
+	MaxAttendees          int32              `json:"max_attendees"`
+	Venue                 pgtype.Text        `json:"venue"`
+	Description           pgtype.Text        `json:"description"`
+	Thumbnail             []byte             `json:"thumbnail"`
+	Status                EventStatusType    `json:"status"`
+	AgeRangeMin           pgtype.Int4        `json:"age_range_min"`
+	AgeRangeMax           pgtype.Int4        `json:"age_range_max"`
+	AllowFemale           bool               `json:"allow_female"`
+	AllowMale             bool               `json:"allow_male"`
+	AllowDiverse          bool               `json:"allow_diverse"`
+	CreatedAt             pgtype.Timestamptz `json:"created_at"`
 }
 
 type EventAttendee struct {

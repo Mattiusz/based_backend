@@ -15,7 +15,7 @@ CREATE TABLE users (
     name VARCHAR(100) NOT NULL,
     birthday DATE NOT NULL,
     gender gender_type NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
 -- Events table
@@ -30,13 +30,13 @@ CREATE TABLE events (
     venue VARCHAR(200),
     description TEXT,
     thumbnail BYTEA,
-    status event_status_type DEFAULT 'upcoming',
+    status event_status_type NOT NULL DEFAULT 'upcoming',
     age_range_min INTEGER CHECK (age_range_min >= 0),
     age_range_max INTEGER CHECK (age_range_max >= age_range_min),
     allow_female BOOLEAN NOT NULL DEFAULT true,
-    allow_male BOOLEAN NOT NULL DEFAULT tue,
+    allow_male BOOLEAN NOT NULL DEFAULT true,  -- Fixed typo 'tue'
     allow_diverse BOOLEAN NOT NULL DEFAULT true,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     
     CONSTRAINT valid_age_range CHECK (
         (age_range_min IS NULL AND age_range_max IS NULL) OR
@@ -46,36 +46,36 @@ CREATE TABLE events (
 
 -- Event categories (many-to-many relationship)
 CREATE TABLE event_categories (
-    event_id UUID REFERENCES events(event_id) ON DELETE CASCADE,
+    event_id UUID NOT NULL REFERENCES events(event_id) ON DELETE CASCADE,
     category event_category_type NOT NULL,
     PRIMARY KEY (event_id, category)
 );
 
 -- Event attendees with gender tracking
 CREATE TABLE event_attendees (
-    event_id UUID REFERENCES events(event_id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+    event_id UUID NOT NULL REFERENCES events(event_id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     gender gender_type NOT NULL,
-    joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (event_id, user_id)
 );
 
 -- Chat messages
 CREATE TABLE chat_messages (
     message_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    event_id UUID REFERENCES events(event_id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
+    event_id UUID NOT NULL REFERENCES events(event_id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     comment TEXT NOT NULL,
-    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     message_index INTEGER NOT NULL,
     UNIQUE (event_id, message_index)
 );
 
 -- Message likes
 CREATE TABLE message_likes (
-    message_id UUID REFERENCES chat_messages(message_id) ON DELETE CASCADE,
-    user_id UUID REFERENCES users(user_id) ON DELETE CASCADE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    message_id UUID NOT NULL REFERENCES chat_messages(message_id) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (message_id, user_id)
 );
 
@@ -92,7 +92,7 @@ CREATE INDEX idx_message_likes_message ON message_likes(message_id);
 CREATE INDEX idx_events_location ON events USING GIST(location);
 
 -- Create statistics views
-CREATE VIEW event_attendee_statistics AS
+CREATE MATERIALIZED VIEW event_attendee_statistics AS
 SELECT 
     event_id,
     COUNT(CASE WHEN gender = 'female' THEN 1 END) as female_count,
@@ -100,3 +100,6 @@ SELECT
     COUNT(CASE WHEN gender = 'diverse' THEN 1 END) as diverse_count
 FROM event_attendees
 GROUP BY event_id;
+
+-- Create index on materialized view for better performance
+CREATE UNIQUE INDEX idx_event_attendee_stats ON event_attendee_statistics(event_id);

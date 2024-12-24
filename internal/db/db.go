@@ -12,7 +12,10 @@ import (
 )
 
 func NewDB(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
-	poolConfig, err := pgxpool.ParseConfig(cfg.DatabaseURL)
+	// Construct database URL for the migrate instance
+	dbURL := fmt.Sprintf("postgres://%s:%s@%s:%s/%s", cfg.DatabaseUser, cfg.DatabasePassword, cfg.DatabaseHost, cfg.DatabasePort, cfg.DatabaseName)
+
+	poolConfig, err := pgxpool.ParseConfig(dbURL)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse database URL: %w", err)
 	}
@@ -35,13 +38,30 @@ func NewDB(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
 }
 
 func RunMigrations(ctx context.Context, cfg *config.Config) error {
-	m, err := migrate.New("file://./migrations", cfg.DatabaseURL)
+	// Construct database URL for the migrate instance
+	dbURL := fmt.Sprintf("pgx://%s:%s@%s:%s/%s", cfg.DatabaseUser, cfg.DatabasePassword, cfg.DatabaseHost, cfg.DatabasePort, cfg.DatabaseName)
+
+	// Initialize migrator with file source and database URL
+	m, err := migrate.New(cfg.MigrationsDir, dbURL)
 	if err != nil {
 		return fmt.Errorf("failed to create migrate instance: %w", err)
 	}
-	defer m.Close()
+	defer func() {
+		sourceErr, dbErr := m.Close()
+		if sourceErr != nil {
+			fmt.Printf("Error closing migration source: %v\n", sourceErr)
+		}
+		if dbErr != nil {
+			fmt.Printf("Error closing migration database: %v\n", dbErr)
+		}
+	}()
 
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
+	// Run migrations
+	if err := m.Up(); err != nil {
+		if err == migrate.ErrNoChange {
+			// No migrations to run is not an error
+			return nil
+		}
 		return fmt.Errorf("failed to run migrations: %w", err)
 	}
 
