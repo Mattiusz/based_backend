@@ -1,5 +1,5 @@
 
-.PHONY: all build run migrate sqlc protoc dev
+.PHONY: all build run migrate sqlc protoc dev fmt tidy
 
 # Variables
 DB_URL ?= postgres://user:password@postgres:5432/myservice_db?sslmode=disable
@@ -30,5 +30,9 @@ sqlc:
 protoc:
 	protoc -I proto/ --go_out=$(PROTO_OUT_DIR) --go_opt=paths=source_relative --go-grpc_out=$(GRPC_OUT_DIR) --go-grpc_opt=paths=source_relative $(PROTO_DIR)/*.proto
 
-dev: sqlc protoc
+fmt:
+	go fmt ./...
+
+tidy:
+	go mod tidy
 

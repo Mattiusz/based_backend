@@ -8,10 +8,10 @@ import (
 )
 
 type EventRepository interface {
-	CreateEvent(ctx context.Context, req *sqlc.CreateEventParams) (*sqlc.Event, error)
+	CreateEvent(ctx context.Context, req *sqlc.CreateEventParams) (*sqlc.CreateEventRow, error)
 	GetEventByID(ctx context.Context, eventID pgtype.UUID) (*sqlc.GetEventByIDRow, error)
 	GetNearbyEvents(ctx context.Context, params *sqlc.GetNearbyEventsParams) ([]sqlc.GetNearbyEventsRow, error)
-	GetUserEvents(ctx context.Context, userID pgtype.UUID) ([]sqlc.Event, error)
+	GetUserEvents(ctx context.Context, userID pgtype.UUID) ([]sqlc.GetUserEventsRow, error)
 	SearchEvents(ctx context.Context, params *sqlc.SearchEventsParams) ([]sqlc.SearchEventsRow, error)
 	GetEventAttendeeStats(ctx context.Context, eventID pgtype.UUID) (*sqlc.GetEventAttendeeStatsRow, error)
 	JoinEvent(ctx context.Context, params *sqlc.JoinEventParams) error
@@ -28,7 +28,7 @@ func NewEventRepository(q *sqlc.Queries) EventRepository {
 	return &eventRepository{queries: q}
 }
 
-func (r *eventRepository) CreateEvent(ctx context.Context, req *sqlc.CreateEventParams) (*sqlc.Event, error) {
+func (r *eventRepository) CreateEvent(ctx context.Context, req *sqlc.CreateEventParams) (*sqlc.CreateEventRow, error) {
 	event, err := r.queries.CreateEvent(ctx, *req)
 	if err != nil {
 		return nil, err
@@ -52,7 +52,7 @@ func (r *eventRepository) GetNearbyEvents(ctx context.Context, params *sqlc.GetN
 	return events, nil
 }
 
-func (r *eventRepository) GetUserEvents(ctx context.Context, userID pgtype.UUID) ([]sqlc.Event, error) {
+func (r *eventRepository) GetUserEvents(ctx context.Context, userID pgtype.UUID) ([]sqlc.GetUserEventsRow, error) {
 	events, err := r.queries.GetUserEvents(ctx, userID)
 	if err != nil {
 		return nil, err

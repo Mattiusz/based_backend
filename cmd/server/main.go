@@ -5,14 +5,22 @@ import (
 	"log"
 	"net"
 
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+
 	"github.com/mattiusz/based_backend/internal/config"
 	"github.com/mattiusz/based_backend/internal/db"
 	v1 "github.com/mattiusz/based_backend/internal/gen/proto"
 	"github.com/mattiusz/based_backend/internal/gen/sqlc"
 	repository "github.com/mattiusz/based_backend/internal/repositories"
 	"github.com/mattiusz/based_backend/internal/services"
-	"google.golang.org/grpc"
 )
+
+func grpcPanicRecoveryHandler(p interface{}) error {
+	log.Printf("Recovered from panic: %v", p)
+	return status.Errorf(codes.Internal, "Internal server error")
+}
 
 func main() {
 	ctx := context.Background()
@@ -47,7 +55,17 @@ func main() {
 	eventService := services.NewEventService(eventRepo)
 
 	// Initialize gRPC server
-	grpcServer := grpc.NewServer()
+	//
+	grpcServer := grpc.NewServer(
+	//grpc.ChainUnaryInterceptor(
+	//recovery.UnaryServerInterceptor(recovery.WithRecoveryHandler(grpcPanicRecoveryHandler)),
+	//),
+	//grpc.ChainStreamInterceptor(
+	//	recovery.StreamServerInterceptor(recovery.WithRecoveryHandler(grpcPanicRecoveryHandler)),
+	//),
+	)
+	//
+
 	v1.RegisterUserServiceServer(grpcServer, userService)
 	v1.RegisterChatServiceServer(grpcServer, chatService)
 	v1.RegisterEventServiceServer(grpcServer, eventService)

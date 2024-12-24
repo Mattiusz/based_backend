@@ -15,17 +15,18 @@ CREATE TABLE users (
     name VARCHAR(100) NOT NULL,
     birthday DATE NOT NULL,
     gender gender_type NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Events table
 CREATE TABLE events (
     event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     creator_id UUID NOT NULL REFERENCES users(user_id),
     name VARCHAR(200) NOT NULL,
     location geometry(Point, 4326) NOT NULL,
     event_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
-    timezone_offset_minutes INTEGER NOT NULL,
+    event_timezone INTEGER NOT NULL,
     max_attendees INTEGER NOT NULL CHECK (max_attendees >= 0),
     venue VARCHAR(200),
     description TEXT,
@@ -34,10 +35,8 @@ CREATE TABLE events (
     age_range_min INTEGER CHECK (age_range_min >= 0),
     age_range_max INTEGER CHECK (age_range_max >= age_range_min),
     allow_female BOOLEAN NOT NULL DEFAULT true,
-    allow_male BOOLEAN NOT NULL DEFAULT true,  -- Fixed typo 'tue'
+    allow_male BOOLEAN NOT NULL DEFAULT true,
     allow_diverse BOOLEAN NOT NULL DEFAULT true,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    
     CONSTRAINT valid_age_range CHECK (
         (age_range_min IS NULL AND age_range_max IS NULL) OR
         (age_range_min IS NOT NULL AND age_range_max IS NOT NULL)
@@ -56,7 +55,7 @@ CREATE TABLE event_attendees (
     event_id UUID NOT NULL REFERENCES events(event_id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     gender gender_type NOT NULL,
-    joined_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    joined_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     PRIMARY KEY (event_id, user_id)
 );
 
@@ -66,7 +65,7 @@ CREATE TABLE chat_messages (
     event_id UUID NOT NULL REFERENCES events(event_id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     comment TEXT NOT NULL,
-    timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     message_index INTEGER NOT NULL,
     UNIQUE (event_id, message_index)
 );
@@ -75,7 +74,7 @@ CREATE TABLE chat_messages (
 CREATE TABLE message_likes (
     message_id UUID NOT NULL REFERENCES chat_messages(message_id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     PRIMARY KEY (message_id, user_id)
 );
 
