@@ -9,6 +9,7 @@ import (
 
 type UserRepository interface {
 	CreateUser(ctx context.Context, req *sqlc.CreateUserParams) (*sqlc.User, error)
+	UpdateUser(ctx context.Context, req *sqlc.UpdateUserParams) (*sqlc.User, error)
 	GetUserByID(ctx context.Context, userID pgtype.UUID) (*sqlc.User, error)
 }
 
@@ -22,6 +23,15 @@ func NewUserRepository(q *sqlc.Queries) UserRepository {
 
 func (r *repository) CreateUser(ctx context.Context, req *sqlc.CreateUserParams) (*sqlc.User, error) {
 	user, err := r.queries.CreateUser(ctx, *req)
+	if err != nil {
+		return nil, err
+	}
+
+	return &user, nil
+}
+
+func (r *repository) UpdateUser(ctx context.Context, req *sqlc.UpdateUserParams) (*sqlc.User, error) {
+	user, err := r.queries.UpdateUser(ctx, *req)
 	if err != nil {
 		return nil, err
 	}

@@ -7,24 +7,40 @@ import "google/protobuf/timestamp.proto";
 option go_package = "github.com/mattiusz/based_backend/internal/gen/proto/v1";
 
 service UserService {
-  rpc CreateUser(CreateUserRequest) returns (User);
-  rpc GetUserByID(GetUserByIDRequest) returns (User);
+  rpc CreateUser(CreateUserRequest) returns (User) {}
+  rpc UpdateUser(UpdateUserRequest) returns (User) {}
+  rpc GetUser(GetUserRequest) returns (User) {}
+}
+
+enum GENDER {
+  MALE = 0;
+  FEMALE = 1;
+  DIVERSE = 2;
 }
 
 message User {
   bytes user_id = 1;
-  string email = 2;
-  string display_name = 3;
-  optional string profile_picture = 4;
-  google.protobuf.Timestamp created_at = 5;
+  string display_name = 2;
+  google.protobuf.Timestamp birthday = 3;
+  GENDER gender = 4;
+  repeated string attending_event_ids = 5;
 }
 
 message CreateUserRequest {
-  string email = 1;
+  google.protobuf.Timestamp birthday = 1;
   string display_name = 2;
-  optional string profile_picture = 3;
+  GENDER gender = 3;
+  repeated string attending_event_ids = 4;
 }
 
-message GetUserByIDRequest {
+message UpdateUserRequest {
+  bytes user_id = 1;
+  string display_name = 2;
+  google.protobuf.Timestamp birthday = 3;
+  GENDER gender = 4;
+  repeated string attending_event_ids = 5;
+}
+
+message GetUserRequest {
   bytes user_id = 1;
 }

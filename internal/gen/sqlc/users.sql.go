@@ -12,8 +12,8 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (name, birthday, gender)
-VALUES ($1, $2, $3)
+INSERT INTO users (name, birthday, gender, created_at)
+VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
 RETURNING user_id, name, birthday, gender, created_at
 `
 
@@ -42,6 +42,40 @@ SELECT user_id, name, birthday, gender, created_at FROM users WHERE user_id = $1
 
 func (q *Queries) GetUserByID(ctx context.Context, userID pgtype.UUID) (User, error) {
 	row := q.db.QueryRow(ctx, getUserByID, userID)
+	var i User
+	err := row.Scan(
+		&i.UserID,
+		&i.Name,
+		&i.Birthday,
+		&i.Gender,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const updateUser = `-- name: UpdateUser :one
+UPDATE users
+SET name = $2,
+    birthday = $3,
+    gender = $4
+WHERE user_id = $1
+RETURNING user_id, name, birthday, gender, created_at
+`
+
+type UpdateUserParams struct {
+	UserID   pgtype.UUID `json:"user_id"`
+	Name     string      `json:"name"`
+	Birthday pgtype.Date `json:"birthday"`
+	Gender   GenderType  `json:"gender"`
+}
+
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, error) {
+	row := q.db.QueryRow(ctx, updateUser,
+		arg.UserID,
+		arg.Name,
+		arg.Birthday,
+		arg.Gender,
+	)
 	var i User
 	err := row.Scan(
 		&i.UserID,

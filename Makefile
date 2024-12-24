@@ -5,7 +5,7 @@
 DB_URL ?= postgres://user:password@postgres:5432/myservice_db?sslmode=disable
 PROTO_DIR=proto
 SQLC_CONFIG=sqlc.yaml
-MIGRATIONS_DIR=./migrations
+MIGRATIONS_DIR=./sql/migrations
 GRPC_OUT_DIR=./internal/gen/proto
 PROTO_OUT_DIR=./internal/gen/proto
 
