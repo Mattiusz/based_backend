@@ -1,34 +1,22 @@
--- Helper function to extract coordinates
-CREATE OR REPLACE FUNCTION get_coordinates(geom geometry)
-RETURNS TABLE (latitude float, longitude float) AS $$
-BEGIN
-    RETURN QUERY
-    SELECT 
-        ST_Y(geom::geometry) as latitude,
-        ST_X(geom::geometry) as longitude;
-END;
-$$ LANGUAGE plpgsql;
-
 -- name: CreateEvent :one
 INSERT INTO events (
-    created_at, creator_id, name, location, event_datetime, 
-    event_timezone, max_attendees, venue, 
-    description, age_range_min, age_range_max,
-    allow_female, allow_male, allow_diverse, thumbnail
+    creator_id, name, location, datetime, 
+    max_attendees, venue, description, age_range_min, age_range_max,
+    allow_female, allow_male, allow_diverse, thumbnail, categories
 )
 VALUES (
-    NOW(), $1, $2, ST_SetSRID(ST_MakePoint($4, $3), 4326), $5, 
+    $1, $2, ST_SetSRID(ST_MakePoint($4, $3), 4326), $5, 
     $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
 )
 RETURNING 
     event_id,
     created_at,
+    updated_at,
     creator_id,
     name,
     ST_Y(location::geometry) as latitude,
     ST_X(location::geometry) as longitude,
-    event_datetime,
-    event_timezone,
+    datetime,
     max_attendees,
     venue,
     description,
@@ -38,71 +26,108 @@ RETURNING
     allow_female,
     allow_male,
     allow_diverse,
-    thumbnail;
-
--- name: AddEventCategory :exec
-INSERT INTO event_categories (event_id, category)
-VALUES ($1, $2);
+    thumbnail,
+    categories;
 
 -- name: GetEventByID :one
 SELECT 
-    e.*,
+    e.event_id,
+    e.created_at,
+    e.updated_at,
+    e.creator_id,
+    e.name,
     ST_Y(e.location::geometry) as latitude,
     ST_X(e.location::geometry) as longitude,
-    json_agg(DISTINCT ec.category) as categories,
+    e.datetime,
+    e.max_attendees,
+    e.venue,
+    e.description,
+    e.status,
+    e.age_range_min,
+    e.age_range_max,
+    e.allow_female,
+    e.allow_male,
+    e.allow_diverse,
+    e.thumbnail,
+    e.categories,
     COUNT(DISTINCT cm.message_id) as number_of_comments,
     COUNT(DISTINCT ea.user_id) as number_of_attendees
 FROM events e
-LEFT JOIN event_categories ec ON e.event_id = ec.event_id
 LEFT JOIN chat_messages cm ON e.event_id = cm.event_id
 LEFT JOIN event_attendees ea ON e.event_id = ea.event_id
 WHERE e.event_id = $1
-GROUP BY e.event_id;
+GROUP BY 
+    e.event_id,
+    e.created_at,
+    e.updated_at,
+    e.creator_id,
+    e.name,
+    e.location,
+    e.datetime,
+    e.max_attendees,
+    e.venue,
+    e.description,
+    e.status,
+    e.age_range_min,
+    e.age_range_max,
+    e.allow_female,
+    e.allow_male,
+    e.allow_diverse,
+    e.thumbnail,
+    e.categories;
 
--- name: GetNearbyEvents :many
+-- name: GetNearbyEventsByStatusAndGender :many
 SELECT 
-    event_id,
-    created_at,
-    creator_id,
-    name,
-    ST_Y(location::geometry) as latitude,
-    ST_X(location::geometry) as longitude,
-    event_datetime,
-    event_timezone,
-    max_attendees,
-    venue,
-    status,
-    age_range_min,
-    age_range_max,
-    allow_female,
-    allow_male,
-    allow_diverse,
-    thumbnail,
-    ST_Distance(location, ST_SetSRID(ST_MakePoint($1, $2), 4326)) as distance_meters
-FROM events
+    e.event_id,
+    e.created_at,
+    e.creator_id,
+    e.name,
+    ST_Y(e.location::geometry) as latitude,
+    ST_X(e.location::geometry) as longitude,
+    e.datetime,
+    e.max_attendees,
+    e.venue,
+    e.status,
+    e.age_range_min,
+    e.age_range_max,
+    e.allow_female,
+    e.allow_male,
+    e.allow_diverse,
+    e.categories,
+    ST_Distance(e.location, ST_SetSRID(ST_MakePoint($3, $2), 4326)) as distance_meters,
+    COUNT(DISTINCT ea.user_id) as number_of_attendees
+FROM events e
+LEFT JOIN event_attendees ea ON e.event_id = ea.event_id
 WHERE 
-    status = 'upcoming' AND
+    e.status = $1 AND
     ST_DWithin(
-        location,
-        ST_SetSRID(ST_MakePoint($1, $2), 4326),
-        $3  -- radius in meters
-    )
+        e.location,
+        ST_SetSRID(ST_MakePoint($2, $3), 4326),
+        $4  -- radius in meters
+    ) AND
+    CASE 
+        WHEN $5 = 'female' THEN e.allow_female = true
+        WHEN $5 = 'male' THEN e.allow_male = true
+        WHEN $5 = 'diverse' THEN e.allow_diverse = true
+    END
+GROUP BY 
+    e.event_id,
+    e.created_at,
+    e.creator_id,
+    e.name,
+    e.location,
+    e.datetime,
+    e.max_attendees,
+    e.venue,
+    e.status,
+    e.age_range_min,
+    e.age_range_max,
+    e.allow_female,
+    e.allow_male,
+    e.allow_diverse,
+    e.categories
 ORDER BY distance_meters
-LIMIT $4;
-
--- name: JoinEvent :exec
-INSERT INTO event_attendees (event_id, user_id, gender)
-SELECT $1, $2, users.gender
-FROM users
-WHERE users.user_id = $2
-AND NOT EXISTS (
-    SELECT 1 FROM event_attendees 
-    WHERE event_id = $1 AND user_id = $2
-);
-
--- name: LeaveEvent :exec
-DELETE FROM event_attendees
-WHERE event_id = $1 AND user_id = $2;
+LIMIT $6;
 
 -- name: GetEventAttendeeStats :one
 SELECT 
@@ -112,33 +137,73 @@ SELECT
 FROM event_attendees
 WHERE event_id = $1;
 
--- name: UpdateEventStatus :one
+-- name: UpdateEvent :one
 UPDATE events
-SET status = $2
+SET updated_at = NOW(), status = $2, name = $3, location = ST_SetSRID(ST_MakePoint($5, $4), 4326),
+    datetime = $6, max_attendees = $7, venue = $8, description = $9, 
+    age_range_min = $10, age_range_max = $11, allow_male = $12, allow_female = $13, allow_diverse = $14,
+    categories = $15
 WHERE event_id = $1
-RETURNING *;
-
--- name: SearchEvents :many
-SELECT 
-    e.*,
-    ST_Y(e.location::geometry) as latitude,
-    ST_X(e.location::geometry) as longitude,
-    json_agg(DISTINCT ec.category) as categories
-FROM events e
-LEFT JOIN event_categories ec ON e.event_id = ec.event_id
-WHERE 
-    (LOWER(e.name) LIKE LOWER($1) OR LOWER(e.description) LIKE LOWER($1))
-    AND (status = 'upcoming' OR status = 'ongoing')
-GROUP BY e.event_id
-ORDER BY event_datetime
-LIMIT $2 OFFSET $3;
+RETURNING 
+    event_id,
+    created_at,
+    updated_at,
+    creator_id,
+    name,
+    ST_Y(location::geometry) as latitude,
+    ST_X(location::geometry) as longitude,
+    datetime,
+    max_attendees,
+    venue,
+    description,
+    status,
+    age_range_min,
+    age_range_max,
+    allow_female,
+    allow_male,
+    allow_diverse,
+    categories;
 
 -- name: GetUserEvents :many
 SELECT 
     e.*,
     ST_Y(e.location::geometry) as latitude,
-    ST_X(e.location::geometry) as longitude
+    ST_X(e.location::geometry) as longitude,
+    COUNT(DISTINCT ea.user_id) as number_of_attendees
 FROM events e
 JOIN event_attendees ea ON e.event_id = ea.event_id
 WHERE ea.user_id = $1
-ORDER BY e.event_datetime DESC;
+GROUP BY 
+    e.event_id,
+    e.created_at,
+    e.creator_id,
+    e.name,
+    e.location,
+    e.datetime,
+    e.max_attendees,
+    e.venue,
+    e.status,
+    e.age_range_min,
+    e.age_range_max,
+    e.allow_female,
+    e.allow_male,
+    e.allow_diverse,
+    e.categories
+ORDER BY e.datetime DESC
+LIMIT $2;
+
+-- name: JoinEvent :exec
+INSERT INTO event_attendees (event_id, user_id, gender)
+SELECT $1, $2, u.gender
+FROM users u
+JOIN events e ON e.event_id = $1
+WHERE u.user_id = $2
+AND EXTRACT(YEAR FROM AGE(e.datetime, u.birthday)) BETWEEN e.age_range_min AND e.age_range_max
+AND NOT EXISTS (
+    SELECT 1 FROM event_attendees 
+    WHERE event_id = $1 AND user_id = $2
+);
+
+-- name: LeaveEvent :exec
+DELETE FROM event_attendees
+WHERE event_id = $1 AND user_id = $2;

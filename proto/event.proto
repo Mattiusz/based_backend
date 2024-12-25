@@ -9,13 +9,12 @@ option go_package = "github.com/mattiusz/based_backend/internal/gen/proto/v1";
 
 service EventService {
   rpc CreateEvent(CreateEventRequest) returns (Event);
-  rpc GetEventByID(GetEventByIDRequest) returns (EventDetails);
+  rpc GetEventByID(GetEventByIDRequest) returns (Event);
   rpc GetNearbyEvents(GetNearbyEventsRequest) returns (GetNearbyEventsResponse);
   rpc GetUserEvents(GetUserEventsRequest) returns (GetUserEventsResponse);
-  rpc SearchEvents(SearchEventsRequest) returns (SearchEventsResponse);
   rpc JoinEvent(JoinEventRequest) returns (google.protobuf.Empty);
   rpc LeaveEvent(LeaveEventRequest) returns (google.protobuf.Empty);
-  rpc UpdateEventStatus(UpdateEventStatusRequest) returns (Event);
+  rpc UpdateEvent(UpdateEventRequest) returns (Event);
   rpc AddEventCategory(AddEventCategoryRequest) returns (google.protobuf.Empty);
   rpc GetEventAttendeeStats(GetEventAttendeeStatsRequest) returns (EventAttendeeStats);
 }
@@ -26,30 +25,37 @@ message Location {
 }
 
 message Event {
+  // Core identifiers
   bytes event_id = 1;
   bytes creator_id = 2;
+  
+  // Basic event information
   string name = 3;
-  Location location = 4;
-  google.protobuf.Timestamp event_datetime = 5;
-  int32 event_timezone = 6;
-  int32 max_attendees = 7;
   string venue = 8;
   optional string description = 9;
   optional bytes thumbnail = 10;
   EventStatus status = 11;
+  
+  // Time and location
+  Location location = 4;
+  google.protobuf.Timestamp datetime = 5;
+  int32 timezone = 6;
+  google.protobuf.Timestamp created_at = 20;
+  
+  // Capacity and attendance
+  int32 max_attendees = 7;
+  int64 number_of_attendees = 19;
+  int64 number_of_comments = 18;
+  
+  // Categories and tags
+  repeated string categories = 17;
+  
+  // Participation restrictions
   int32 age_range_min = 12;
   int32 age_range_max = 13;
   bool allow_female = 14;
   bool allow_male = 15;
   bool allow_diverse = 16;
-  google.protobuf.Timestamp created_at = 17;
-}
-
-message EventDetails {
-  Event event = 1;
-  repeated string categories = 2;
-  int64 number_of_comments = 3;
-  int64 number_of_attendees = 4;
 }
 
 enum EventStatus {
@@ -76,8 +82,8 @@ message CreateEventRequest {
   bytes creator_id = 1;
   string name = 2;
   Location location = 3;
-  google.protobuf.Timestamp event_datetime = 4;
-  int32 event_timezone = 5;
+  google.protobuf.Timestamp datetime = 4;
+  int32 timezone = 5;
   int32 max_attendees = 6;
   string venue = 7;
   string description = 8;
@@ -116,16 +122,6 @@ message GetUserEventsResponse {
   repeated Event events = 1;
 }
 
-message SearchEventsRequest {
-  string query = 1;
-  int32 limit = 2;
-  int32 offset = 3;
-}
-
-message SearchEventsResponse {
-  repeated EventDetails events = 1;
-}
-
 message JoinEventRequest {
   bytes event_id = 1;
   bytes user_id = 2;
@@ -136,7 +132,7 @@ message LeaveEventRequest {
   bytes user_id = 2;
 }
 
-message UpdateEventStatusRequest {
+message UpdateEventRequest {
   bytes event_id = 1;
   EventStatus status = 2;
 }

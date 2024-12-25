@@ -12,7 +12,7 @@ CREATE TYPE event_category_type AS ENUM (
 -- Users table
 CREATE TABLE users (
     user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name VARCHAR(100) NOT NULL,
+    name TEXT NOT NULL,
     birthday DATE NOT NULL,
     gender gender_type NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -21,19 +21,20 @@ CREATE TABLE users (
 -- Events table
 CREATE TABLE events (
     event_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     creator_id UUID NOT NULL REFERENCES users(user_id),
-    name VARCHAR(200) NOT NULL,
-    location geometry(Point, 4326) NOT NULL,
-    event_datetime TIMESTAMP WITH TIME ZONE NOT NULL,
-    event_timezone INTEGER NOT NULL,
-    max_attendees INTEGER NOT NULL CHECK (max_attendees >= 0),
-    venue VARCHAR(200),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    name TEXT NOT NULL,
+    venue TEXT,
     description TEXT,
-    thumbnail BYTEA,
+    categories event_category_type[] DEFAULT '{}',
     status event_status_type NOT NULL DEFAULT 'upcoming',
-    age_range_min INTEGER CHECK (age_range_min >= 0),
-    age_range_max INTEGER CHECK (age_range_max >= age_range_min),
+    thumbnail BYTEA DEFAULT NULL,
+    location geometry(Point, 4326) NOT NULL,
+    datetime TIMESTAMP WITH TIME ZONE NOT NULL,
+    max_attendees INTEGER NOT NULL CHECK (max_attendees >= 0),
+    age_range_min INTEGER CHECK (age_range_min >= 0) DEFAULT 0,
+    age_range_max INTEGER CHECK (age_range_max >= age_range_min) DEFAULT 99,
     allow_female BOOLEAN NOT NULL DEFAULT true,
     allow_male BOOLEAN NOT NULL DEFAULT true,
     allow_diverse BOOLEAN NOT NULL DEFAULT true,
@@ -41,13 +42,6 @@ CREATE TABLE events (
         (age_range_min IS NULL AND age_range_max IS NULL) OR
         (age_range_min IS NOT NULL AND age_range_max IS NOT NULL)
     )
-);
-
--- Event categories (many-to-many relationship)
-CREATE TABLE event_categories (
-    event_id UUID NOT NULL REFERENCES events(event_id) ON DELETE CASCADE,
-    category event_category_type NOT NULL,
-    PRIMARY KEY (event_id, category)
 );
 
 -- Event attendees with gender tracking
@@ -80,7 +74,7 @@ CREATE TABLE message_likes (
 
 -- Create indexes for better query performance
 CREATE INDEX idx_events_creator ON events(creator_id);
-CREATE INDEX idx_events_datetime ON events(event_datetime);
+CREATE INDEX idx_events_datetime ON events(datetime);
 CREATE INDEX idx_events_status ON events(status);
 CREATE INDEX idx_chat_messages_event ON chat_messages(event_id);
 CREATE INDEX idx_event_attendees_user ON event_attendees(user_id);
