@@ -11,41 +11,25 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const addEventCategory = `-- name: AddEventCategory :exec
-INSERT INTO event_categories (event_id, category)
-VALUES ($1, $2)
-`
-
-type AddEventCategoryParams struct {
-	EventID  pgtype.UUID       `json:"event_id"`
-	Category EventCategoryType `json:"category"`
-}
-
-func (q *Queries) AddEventCategory(ctx context.Context, arg AddEventCategoryParams) error {
-	_, err := q.db.Exec(ctx, addEventCategory, arg.EventID, arg.Category)
-	return err
-}
-
 const createEvent = `-- name: CreateEvent :one
 INSERT INTO events (
-    created_at, creator_id, name, location, event_datetime, 
-    event_timezone, max_attendees, venue, 
-    description, age_range_min, age_range_max,
-    allow_female, allow_male, allow_diverse, thumbnail
+    creator_id, name, location, datetime, 
+    max_attendees, venue, description, age_range_min, age_range_max,
+    allow_female, allow_male, allow_diverse, thumbnail, status, categories
 )
 VALUES (
-    NOW(), $1, $2, ST_SetSRID(ST_MakePoint($4, $3), 4326), $5, 
-    $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+    $1, $2, ST_SetSRID(ST_MakePoint($4, $3), 4326), $5, 
+    $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
 )
 RETURNING 
     event_id,
     created_at,
+    updated_at,
     creator_id,
     name,
     ST_Y(location::geometry) as latitude,
     ST_X(location::geometry) as longitude,
-    event_datetime,
-    event_timezone,
+    datetime,
     max_attendees,
     venue,
     description,
@@ -55,46 +39,51 @@ RETURNING
     allow_female,
     allow_male,
     allow_diverse,
-    thumbnail
+    thumbnail,
+    status,
+    categories
 `
 
 type CreateEventParams struct {
-	CreatorID     pgtype.UUID        `json:"creator_id"`
-	Name          string             `json:"name"`
-	StMakepoint   interface{}        `json:"st_makepoint"`
-	StMakepoint_2 interface{}        `json:"st_makepoint_2"`
-	EventDatetime pgtype.Timestamptz `json:"event_datetime"`
-	EventTimezone int32              `json:"event_timezone"`
-	MaxAttendees  int32              `json:"max_attendees"`
-	Venue         pgtype.Text        `json:"venue"`
-	Description   pgtype.Text        `json:"description"`
-	AgeRangeMin   pgtype.Int4        `json:"age_range_min"`
-	AgeRangeMax   pgtype.Int4        `json:"age_range_max"`
-	AllowFemale   bool               `json:"allow_female"`
-	AllowMale     bool               `json:"allow_male"`
-	AllowDiverse  bool               `json:"allow_diverse"`
-	Thumbnail     []byte             `json:"thumbnail"`
+	CreatorID     pgtype.UUID         `json:"creator_id"`
+	Name          string              `json:"name"`
+	StMakepoint   interface{}         `json:"st_makepoint"`
+	StMakepoint_2 interface{}         `json:"st_makepoint_2"`
+	Datetime      pgtype.Timestamptz  `json:"datetime"`
+	MaxAttendees  int32               `json:"max_attendees"`
+	Venue         pgtype.Text         `json:"venue"`
+	Description   pgtype.Text         `json:"description"`
+	AgeRangeMin   pgtype.Int4         `json:"age_range_min"`
+	AgeRangeMax   pgtype.Int4         `json:"age_range_max"`
+	AllowFemale   bool                `json:"allow_female"`
+	AllowMale     bool                `json:"allow_male"`
+	AllowDiverse  bool                `json:"allow_diverse"`
+	Thumbnail     []byte              `json:"thumbnail"`
+	Status        EventStatusType     `json:"status"`
+	Categories    []EventCategoryType `json:"categories"`
 }
 
 type CreateEventRow struct {
-	EventID       pgtype.UUID        `json:"event_id"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	CreatorID     pgtype.UUID        `json:"creator_id"`
-	Name          string             `json:"name"`
-	Latitude      interface{}        `json:"latitude"`
-	Longitude     interface{}        `json:"longitude"`
-	EventDatetime pgtype.Timestamptz `json:"event_datetime"`
-	EventTimezone int32              `json:"event_timezone"`
-	MaxAttendees  int32              `json:"max_attendees"`
-	Venue         pgtype.Text        `json:"venue"`
-	Description   pgtype.Text        `json:"description"`
-	Status        EventStatusType    `json:"status"`
-	AgeRangeMin   pgtype.Int4        `json:"age_range_min"`
-	AgeRangeMax   pgtype.Int4        `json:"age_range_max"`
-	AllowFemale   bool               `json:"allow_female"`
-	AllowMale     bool               `json:"allow_male"`
-	AllowDiverse  bool               `json:"allow_diverse"`
-	Thumbnail     []byte             `json:"thumbnail"`
+	EventID      pgtype.UUID         `json:"event_id"`
+	CreatedAt    pgtype.Timestamptz  `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz  `json:"updated_at"`
+	CreatorID    pgtype.UUID         `json:"creator_id"`
+	Name         string              `json:"name"`
+	Latitude     interface{}         `json:"latitude"`
+	Longitude    interface{}         `json:"longitude"`
+	Datetime     pgtype.Timestamptz  `json:"datetime"`
+	MaxAttendees int32               `json:"max_attendees"`
+	Venue        pgtype.Text         `json:"venue"`
+	Description  pgtype.Text         `json:"description"`
+	Status       EventStatusType     `json:"status"`
+	AgeRangeMin  pgtype.Int4         `json:"age_range_min"`
+	AgeRangeMax  pgtype.Int4         `json:"age_range_max"`
+	AllowFemale  bool                `json:"allow_female"`
+	AllowMale    bool                `json:"allow_male"`
+	AllowDiverse bool                `json:"allow_diverse"`
+	Thumbnail    []byte              `json:"thumbnail"`
+	Status_2     EventStatusType     `json:"status_2"`
+	Categories   []EventCategoryType `json:"categories"`
 }
 
 func (q *Queries) CreateEvent(ctx context.Context, arg CreateEventParams) (CreateEventRow, error) {
@@ -103,8 +92,7 @@ func (q *Queries) CreateEvent(ctx context.Context, arg CreateEventParams) (Creat
 		arg.Name,
 		arg.StMakepoint,
 		arg.StMakepoint_2,
-		arg.EventDatetime,
-		arg.EventTimezone,
+		arg.Datetime,
 		arg.MaxAttendees,
 		arg.Venue,
 		arg.Description,
@@ -114,17 +102,19 @@ func (q *Queries) CreateEvent(ctx context.Context, arg CreateEventParams) (Creat
 		arg.AllowMale,
 		arg.AllowDiverse,
 		arg.Thumbnail,
+		arg.Status,
+		arg.Categories,
 	)
 	var i CreateEventRow
 	err := row.Scan(
 		&i.EventID,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 		&i.CreatorID,
 		&i.Name,
 		&i.Latitude,
 		&i.Longitude,
-		&i.EventDatetime,
-		&i.EventTimezone,
+		&i.Datetime,
 		&i.MaxAttendees,
 		&i.Venue,
 		&i.Description,
@@ -135,6 +125,8 @@ func (q *Queries) CreateEvent(ctx context.Context, arg CreateEventParams) (Creat
 		&i.AllowMale,
 		&i.AllowDiverse,
 		&i.Thumbnail,
+		&i.Status_2,
+		&i.Categories,
 	)
 	return i, err
 }
@@ -163,43 +155,74 @@ func (q *Queries) GetEventAttendeeStats(ctx context.Context, eventID pgtype.UUID
 
 const getEventByID = `-- name: GetEventByID :one
 SELECT 
-    e.event_id, e.created_at, e.creator_id, e.name, e.location, e.event_datetime, e.event_timezone, e.max_attendees, e.venue, e.description, e.thumbnail, e.status, e.age_range_min, e.age_range_max, e.allow_female, e.allow_male, e.allow_diverse,
+    e.event_id,
+    e.created_at,
+    e.updated_at,
+    e.creator_id,
+    e.name,
     ST_Y(e.location::geometry) as latitude,
     ST_X(e.location::geometry) as longitude,
-    json_agg(DISTINCT ec.category) as categories,
+    e.datetime,
+    e.max_attendees,
+    e.venue,
+    e.description,
+    e.status,
+    e.age_range_min,
+    e.age_range_max,
+    e.allow_female,
+    e.allow_male,
+    e.allow_diverse,
+    e.thumbnail,
+    e.categories,
     COUNT(DISTINCT cm.message_id) as number_of_comments,
     COUNT(DISTINCT ea.user_id) as number_of_attendees
 FROM events e
-LEFT JOIN event_categories ec ON e.event_id = ec.event_id
 LEFT JOIN chat_messages cm ON e.event_id = cm.event_id
 LEFT JOIN event_attendees ea ON e.event_id = ea.event_id
 WHERE e.event_id = $1
-GROUP BY e.event_id
+GROUP BY 
+    e.event_id,
+    e.created_at,
+    e.updated_at,
+    e.creator_id,
+    e.name,
+    e.location,
+    e.datetime,
+    e.max_attendees,
+    e.venue,
+    e.description,
+    e.status,
+    e.age_range_min,
+    e.age_range_max,
+    e.allow_female,
+    e.allow_male,
+    e.allow_diverse,
+    e.thumbnail,
+    e.categories
 `
 
 type GetEventByIDRow struct {
-	EventID           pgtype.UUID        `json:"event_id"`
-	CreatedAt         pgtype.Timestamptz `json:"created_at"`
-	CreatorID         pgtype.UUID        `json:"creator_id"`
-	Name              string             `json:"name"`
-	Location          interface{}        `json:"location"`
-	EventDatetime     pgtype.Timestamptz `json:"event_datetime"`
-	EventTimezone     int32              `json:"event_timezone"`
-	MaxAttendees      int32              `json:"max_attendees"`
-	Venue             pgtype.Text        `json:"venue"`
-	Description       pgtype.Text        `json:"description"`
-	Thumbnail         []byte             `json:"thumbnail"`
-	Status            EventStatusType    `json:"status"`
-	AgeRangeMin       pgtype.Int4        `json:"age_range_min"`
-	AgeRangeMax       pgtype.Int4        `json:"age_range_max"`
-	AllowFemale       bool               `json:"allow_female"`
-	AllowMale         bool               `json:"allow_male"`
-	AllowDiverse      bool               `json:"allow_diverse"`
-	Latitude          interface{}        `json:"latitude"`
-	Longitude         interface{}        `json:"longitude"`
-	Categories        []byte             `json:"categories"`
-	NumberOfComments  int64              `json:"number_of_comments"`
-	NumberOfAttendees int64              `json:"number_of_attendees"`
+	EventID           pgtype.UUID         `json:"event_id"`
+	CreatedAt         pgtype.Timestamptz  `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz  `json:"updated_at"`
+	CreatorID         pgtype.UUID         `json:"creator_id"`
+	Name              string              `json:"name"`
+	Latitude          interface{}         `json:"latitude"`
+	Longitude         interface{}         `json:"longitude"`
+	Datetime          pgtype.Timestamptz  `json:"datetime"`
+	MaxAttendees      int32               `json:"max_attendees"`
+	Venue             pgtype.Text         `json:"venue"`
+	Description       pgtype.Text         `json:"description"`
+	Status            EventStatusType     `json:"status"`
+	AgeRangeMin       pgtype.Int4         `json:"age_range_min"`
+	AgeRangeMax       pgtype.Int4         `json:"age_range_max"`
+	AllowFemale       bool                `json:"allow_female"`
+	AllowMale         bool                `json:"allow_male"`
+	AllowDiverse      bool                `json:"allow_diverse"`
+	Thumbnail         []byte              `json:"thumbnail"`
+	Categories        []EventCategoryType `json:"categories"`
+	NumberOfComments  int64               `json:"number_of_comments"`
+	NumberOfAttendees int64               `json:"number_of_attendees"`
 }
 
 func (q *Queries) GetEventByID(ctx context.Context, eventID pgtype.UUID) (GetEventByIDRow, error) {
@@ -208,23 +231,22 @@ func (q *Queries) GetEventByID(ctx context.Context, eventID pgtype.UUID) (GetEve
 	err := row.Scan(
 		&i.EventID,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 		&i.CreatorID,
 		&i.Name,
-		&i.Location,
-		&i.EventDatetime,
-		&i.EventTimezone,
+		&i.Latitude,
+		&i.Longitude,
+		&i.Datetime,
 		&i.MaxAttendees,
 		&i.Venue,
 		&i.Description,
-		&i.Thumbnail,
 		&i.Status,
 		&i.AgeRangeMin,
 		&i.AgeRangeMax,
 		&i.AllowFemale,
 		&i.AllowMale,
 		&i.AllowDiverse,
-		&i.Latitude,
-		&i.Longitude,
+		&i.Thumbnail,
 		&i.Categories,
 		&i.NumberOfComments,
 		&i.NumberOfAttendees,
@@ -232,80 +254,106 @@ func (q *Queries) GetEventByID(ctx context.Context, eventID pgtype.UUID) (GetEve
 	return i, err
 }
 
-const getNearbyEvents = `-- name: GetNearbyEvents :many
+const getNearbyEventsByStatusAndGender = `-- name: GetNearbyEventsByStatusAndGender :many
 SELECT 
-    event_id,
-    created_at,
-    creator_id,
-    name,
-    ST_Y(location::geometry) as latitude,
-    ST_X(location::geometry) as longitude,
-    event_datetime,
-    event_timezone,
-    max_attendees,
-    venue,
-    status,
-    age_range_min,
-    age_range_max,
-    allow_female,
-    allow_male,
-    allow_diverse,
-    thumbnail,
-    ST_Distance(location, ST_SetSRID(ST_MakePoint($1, $2), 4326)) as distance_meters
-FROM events
+    e.event_id,
+    e.created_at,
+    e.creator_id,
+    e.name,
+    ST_Y(e.location::geometry) as latitude,
+    ST_X(e.location::geometry) as longitude,
+    e.datetime,
+    e.max_attendees,
+    e.venue,
+    e.status,
+    e.age_range_min,
+    e.age_range_max,
+    e.allow_female,
+    e.allow_male,
+    e.allow_diverse,
+    e.categories,
+    ST_Distance(e.location, ST_SetSRID(ST_MakePoint($3, $2), 4326)) as distance_meters,
+    COUNT(DISTINCT ea.user_id) as number_of_attendees
+FROM events e
+LEFT JOIN event_attendees ea ON e.event_id = ea.event_id
 WHERE 
-    status = 'upcoming' AND
+    e.status = $1 AND
     ST_DWithin(
-        location,
-        ST_SetSRID(ST_MakePoint($1, $2), 4326),
-        $3  -- radius in meters
-    )
+        e.location,
+        ST_SetSRID(ST_MakePoint($2, $3), 4326),
+        $4  -- radius in meters
+    ) AND
+    CASE 
+        WHEN $5 = 'female' THEN e.allow_female = true
+        WHEN $5 = 'male' THEN e.allow_male = true
+        WHEN $5 = 'diverse' THEN e.allow_diverse = true
+    END
+GROUP BY 
+    e.event_id,
+    e.created_at,
+    e.creator_id,
+    e.name,
+    e.location,
+    e.datetime,
+    e.max_attendees,
+    e.venue,
+    e.status,
+    e.age_range_min,
+    e.age_range_max,
+    e.allow_female,
+    e.allow_male,
+    e.allow_diverse,
+    e.categories
 ORDER BY distance_meters
-LIMIT $4
+LIMIT $6
 `
 
-type GetNearbyEventsParams struct {
-	StMakepoint   interface{} `json:"st_makepoint"`
-	StMakepoint_2 interface{} `json:"st_makepoint_2"`
-	StDwithin     interface{} `json:"st_dwithin"`
-	Limit         int32       `json:"limit"`
+type GetNearbyEventsByStatusAndGenderParams struct {
+	Status        EventStatusType `json:"status"`
+	StMakepoint   interface{}     `json:"st_makepoint"`
+	StMakepoint_2 interface{}     `json:"st_makepoint_2"`
+	StDwithin     interface{}     `json:"st_dwithin"`
+	Column5       interface{}     `json:"column_5"`
+	Limit         int32           `json:"limit"`
 }
 
-type GetNearbyEventsRow struct {
-	EventID        pgtype.UUID        `json:"event_id"`
-	CreatedAt      pgtype.Timestamptz `json:"created_at"`
-	CreatorID      pgtype.UUID        `json:"creator_id"`
-	Name           string             `json:"name"`
-	Latitude       interface{}        `json:"latitude"`
-	Longitude      interface{}        `json:"longitude"`
-	EventDatetime  pgtype.Timestamptz `json:"event_datetime"`
-	EventTimezone  int32              `json:"event_timezone"`
-	MaxAttendees   int32              `json:"max_attendees"`
-	Venue          pgtype.Text        `json:"venue"`
-	Status         EventStatusType    `json:"status"`
-	AgeRangeMin    pgtype.Int4        `json:"age_range_min"`
-	AgeRangeMax    pgtype.Int4        `json:"age_range_max"`
-	AllowFemale    bool               `json:"allow_female"`
-	AllowMale      bool               `json:"allow_male"`
-	AllowDiverse   bool               `json:"allow_diverse"`
-	Thumbnail      []byte             `json:"thumbnail"`
-	DistanceMeters interface{}        `json:"distance_meters"`
+type GetNearbyEventsByStatusAndGenderRow struct {
+	EventID           pgtype.UUID         `json:"event_id"`
+	CreatedAt         pgtype.Timestamptz  `json:"created_at"`
+	CreatorID         pgtype.UUID         `json:"creator_id"`
+	Name              string              `json:"name"`
+	Latitude          interface{}         `json:"latitude"`
+	Longitude         interface{}         `json:"longitude"`
+	Datetime          pgtype.Timestamptz  `json:"datetime"`
+	MaxAttendees      int32               `json:"max_attendees"`
+	Venue             pgtype.Text         `json:"venue"`
+	Status            EventStatusType     `json:"status"`
+	AgeRangeMin       pgtype.Int4         `json:"age_range_min"`
+	AgeRangeMax       pgtype.Int4         `json:"age_range_max"`
+	AllowFemale       bool                `json:"allow_female"`
+	AllowMale         bool                `json:"allow_male"`
+	AllowDiverse      bool                `json:"allow_diverse"`
+	Categories        []EventCategoryType `json:"categories"`
+	DistanceMeters    interface{}         `json:"distance_meters"`
+	NumberOfAttendees int64               `json:"number_of_attendees"`
 }
 
-func (q *Queries) GetNearbyEvents(ctx context.Context, arg GetNearbyEventsParams) ([]GetNearbyEventsRow, error) {
-	rows, err := q.db.Query(ctx, getNearbyEvents,
+func (q *Queries) GetNearbyEventsByStatusAndGender(ctx context.Context, arg GetNearbyEventsByStatusAndGenderParams) ([]GetNearbyEventsByStatusAndGenderRow, error) {
+	rows, err := q.db.Query(ctx, getNearbyEventsByStatusAndGender,
+		arg.Status,
 		arg.StMakepoint,
 		arg.StMakepoint_2,
 		arg.StDwithin,
+		arg.Column5,
 		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetNearbyEventsRow
+	var items []GetNearbyEventsByStatusAndGenderRow
 	for rows.Next() {
-		var i GetNearbyEventsRow
+		var i GetNearbyEventsByStatusAndGenderRow
 		if err := rows.Scan(
 			&i.EventID,
 			&i.CreatedAt,
@@ -313,8 +361,7 @@ func (q *Queries) GetNearbyEvents(ctx context.Context, arg GetNearbyEventsParams
 			&i.Name,
 			&i.Latitude,
 			&i.Longitude,
-			&i.EventDatetime,
-			&i.EventTimezone,
+			&i.Datetime,
 			&i.MaxAttendees,
 			&i.Venue,
 			&i.Status,
@@ -323,8 +370,9 @@ func (q *Queries) GetNearbyEvents(ctx context.Context, arg GetNearbyEventsParams
 			&i.AllowFemale,
 			&i.AllowMale,
 			&i.AllowDiverse,
-			&i.Thumbnail,
+			&i.Categories,
 			&i.DistanceMeters,
+			&i.NumberOfAttendees,
 		); err != nil {
 			return nil, err
 		}
@@ -338,39 +386,64 @@ func (q *Queries) GetNearbyEvents(ctx context.Context, arg GetNearbyEventsParams
 
 const getUserEvents = `-- name: GetUserEvents :many
 SELECT 
-    e.event_id, e.created_at, e.creator_id, e.name, e.location, e.event_datetime, e.event_timezone, e.max_attendees, e.venue, e.description, e.thumbnail, e.status, e.age_range_min, e.age_range_max, e.allow_female, e.allow_male, e.allow_diverse,
+    e.event_id, e.creator_id, e.created_at, e.updated_at, e.name, e.venue, e.description, e.categories, e.status, e.thumbnail, e.location, e.datetime, e.max_attendees, e.age_range_min, e.age_range_max, e.allow_female, e.allow_male, e.allow_diverse,
     ST_Y(e.location::geometry) as latitude,
-    ST_X(e.location::geometry) as longitude
+    ST_X(e.location::geometry) as longitude,
+    COUNT(DISTINCT ea.user_id) as number_of_attendees
 FROM events e
 JOIN event_attendees ea ON e.event_id = ea.event_id
 WHERE ea.user_id = $1
-ORDER BY e.event_datetime DESC
+GROUP BY 
+    e.event_id,
+    e.created_at,
+    e.creator_id,
+    e.name,
+    e.location,
+    e.datetime,
+    e.max_attendees,
+    e.venue,
+    e.status,
+    e.age_range_min,
+    e.age_range_max,
+    e.allow_female,
+    e.allow_male,
+    e.allow_diverse,
+    e.categories
+ORDER BY e.datetime DESC
+LIMIT $2
 `
 
-type GetUserEventsRow struct {
-	EventID       pgtype.UUID        `json:"event_id"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	CreatorID     pgtype.UUID        `json:"creator_id"`
-	Name          string             `json:"name"`
-	Location      interface{}        `json:"location"`
-	EventDatetime pgtype.Timestamptz `json:"event_datetime"`
-	EventTimezone int32              `json:"event_timezone"`
-	MaxAttendees  int32              `json:"max_attendees"`
-	Venue         pgtype.Text        `json:"venue"`
-	Description   pgtype.Text        `json:"description"`
-	Thumbnail     []byte             `json:"thumbnail"`
-	Status        EventStatusType    `json:"status"`
-	AgeRangeMin   pgtype.Int4        `json:"age_range_min"`
-	AgeRangeMax   pgtype.Int4        `json:"age_range_max"`
-	AllowFemale   bool               `json:"allow_female"`
-	AllowMale     bool               `json:"allow_male"`
-	AllowDiverse  bool               `json:"allow_diverse"`
-	Latitude      interface{}        `json:"latitude"`
-	Longitude     interface{}        `json:"longitude"`
+type GetUserEventsParams struct {
+	UserID pgtype.UUID `json:"user_id"`
+	Limit  int32       `json:"limit"`
 }
 
-func (q *Queries) GetUserEvents(ctx context.Context, userID pgtype.UUID) ([]GetUserEventsRow, error) {
-	rows, err := q.db.Query(ctx, getUserEvents, userID)
+type GetUserEventsRow struct {
+	EventID           pgtype.UUID         `json:"event_id"`
+	CreatorID         pgtype.UUID         `json:"creator_id"`
+	CreatedAt         pgtype.Timestamptz  `json:"created_at"`
+	UpdatedAt         pgtype.Timestamptz  `json:"updated_at"`
+	Name              string              `json:"name"`
+	Venue             pgtype.Text         `json:"venue"`
+	Description       pgtype.Text         `json:"description"`
+	Categories        []EventCategoryType `json:"categories"`
+	Status            EventStatusType     `json:"status"`
+	Thumbnail         []byte              `json:"thumbnail"`
+	Location          interface{}         `json:"location"`
+	Datetime          pgtype.Timestamptz  `json:"datetime"`
+	MaxAttendees      int32               `json:"max_attendees"`
+	AgeRangeMin       pgtype.Int4         `json:"age_range_min"`
+	AgeRangeMax       pgtype.Int4         `json:"age_range_max"`
+	AllowFemale       bool                `json:"allow_female"`
+	AllowMale         bool                `json:"allow_male"`
+	AllowDiverse      bool                `json:"allow_diverse"`
+	Latitude          interface{}         `json:"latitude"`
+	Longitude         interface{}         `json:"longitude"`
+	NumberOfAttendees int64               `json:"number_of_attendees"`
+}
+
+func (q *Queries) GetUserEvents(ctx context.Context, arg GetUserEventsParams) ([]GetUserEventsRow, error) {
+	rows, err := q.db.Query(ctx, getUserEvents, arg.UserID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -380,17 +453,18 @@ func (q *Queries) GetUserEvents(ctx context.Context, userID pgtype.UUID) ([]GetU
 		var i GetUserEventsRow
 		if err := rows.Scan(
 			&i.EventID,
-			&i.CreatedAt,
 			&i.CreatorID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
 			&i.Name,
-			&i.Location,
-			&i.EventDatetime,
-			&i.EventTimezone,
-			&i.MaxAttendees,
 			&i.Venue,
 			&i.Description,
-			&i.Thumbnail,
+			&i.Categories,
 			&i.Status,
+			&i.Thumbnail,
+			&i.Location,
+			&i.Datetime,
+			&i.MaxAttendees,
 			&i.AgeRangeMin,
 			&i.AgeRangeMax,
 			&i.AllowFemale,
@@ -398,6 +472,7 @@ func (q *Queries) GetUserEvents(ctx context.Context, userID pgtype.UUID) ([]GetU
 			&i.AllowDiverse,
 			&i.Latitude,
 			&i.Longitude,
+			&i.NumberOfAttendees,
 		); err != nil {
 			return nil, err
 		}
@@ -411,9 +486,11 @@ func (q *Queries) GetUserEvents(ctx context.Context, userID pgtype.UUID) ([]GetU
 
 const joinEvent = `-- name: JoinEvent :exec
 INSERT INTO event_attendees (event_id, user_id, gender)
-SELECT $1, $2, users.gender
-FROM users
-WHERE users.user_id = $2
+SELECT $1, $2, u.gender
+FROM users u
+JOIN events e ON e.event_id = $1
+WHERE u.user_id = $2
+AND EXTRACT(YEAR FROM AGE(e.datetime, u.birthday)) BETWEEN e.age_range_min AND e.age_range_max
 AND NOT EXISTS (
     SELECT 1 FROM event_attendees 
     WHERE event_id = $1 AND user_id = $2
@@ -445,125 +522,111 @@ func (q *Queries) LeaveEvent(ctx context.Context, arg LeaveEventParams) error {
 	return err
 }
 
-const searchEvents = `-- name: SearchEvents :many
-SELECT 
-    e.event_id, e.created_at, e.creator_id, e.name, e.location, e.event_datetime, e.event_timezone, e.max_attendees, e.venue, e.description, e.thumbnail, e.status, e.age_range_min, e.age_range_max, e.allow_female, e.allow_male, e.allow_diverse,
-    ST_Y(e.location::geometry) as latitude,
-    ST_X(e.location::geometry) as longitude,
-    json_agg(DISTINCT ec.category) as categories
-FROM events e
-LEFT JOIN event_categories ec ON e.event_id = ec.event_id
-WHERE 
-    (LOWER(e.name) LIKE LOWER($1) OR LOWER(e.description) LIKE LOWER($1))
-    AND (status = 'upcoming' OR status = 'ongoing')
-GROUP BY e.event_id
-ORDER BY event_datetime
-LIMIT $2 OFFSET $3
-`
-
-type SearchEventsParams struct {
-	Lower  string `json:"lower"`
-	Limit  int32  `json:"limit"`
-	Offset int32  `json:"offset"`
-}
-
-type SearchEventsRow struct {
-	EventID       pgtype.UUID        `json:"event_id"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	CreatorID     pgtype.UUID        `json:"creator_id"`
-	Name          string             `json:"name"`
-	Location      interface{}        `json:"location"`
-	EventDatetime pgtype.Timestamptz `json:"event_datetime"`
-	EventTimezone int32              `json:"event_timezone"`
-	MaxAttendees  int32              `json:"max_attendees"`
-	Venue         pgtype.Text        `json:"venue"`
-	Description   pgtype.Text        `json:"description"`
-	Thumbnail     []byte             `json:"thumbnail"`
-	Status        EventStatusType    `json:"status"`
-	AgeRangeMin   pgtype.Int4        `json:"age_range_min"`
-	AgeRangeMax   pgtype.Int4        `json:"age_range_max"`
-	AllowFemale   bool               `json:"allow_female"`
-	AllowMale     bool               `json:"allow_male"`
-	AllowDiverse  bool               `json:"allow_diverse"`
-	Latitude      interface{}        `json:"latitude"`
-	Longitude     interface{}        `json:"longitude"`
-	Categories    []byte             `json:"categories"`
-}
-
-func (q *Queries) SearchEvents(ctx context.Context, arg SearchEventsParams) ([]SearchEventsRow, error) {
-	rows, err := q.db.Query(ctx, searchEvents, arg.Lower, arg.Limit, arg.Offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []SearchEventsRow
-	for rows.Next() {
-		var i SearchEventsRow
-		if err := rows.Scan(
-			&i.EventID,
-			&i.CreatedAt,
-			&i.CreatorID,
-			&i.Name,
-			&i.Location,
-			&i.EventDatetime,
-			&i.EventTimezone,
-			&i.MaxAttendees,
-			&i.Venue,
-			&i.Description,
-			&i.Thumbnail,
-			&i.Status,
-			&i.AgeRangeMin,
-			&i.AgeRangeMax,
-			&i.AllowFemale,
-			&i.AllowMale,
-			&i.AllowDiverse,
-			&i.Latitude,
-			&i.Longitude,
-			&i.Categories,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const updateEventStatus = `-- name: UpdateEventStatus :one
+const updateEvent = `-- name: UpdateEvent :one
 UPDATE events
-SET status = $2
+SET updated_at = NOW(), status = $2, name = $3, location = ST_SetSRID(ST_MakePoint($5, $4), 4326),
+    datetime = $6, max_attendees = $7, venue = $8, description = $9, 
+    age_range_min = $10, age_range_max = $11, allow_male = $12, allow_female = $13, allow_diverse = $14,
+    categories = $15
 WHERE event_id = $1
-RETURNING event_id, created_at, creator_id, name, location, event_datetime, event_timezone, max_attendees, venue, description, thumbnail, status, age_range_min, age_range_max, allow_female, allow_male, allow_diverse
+RETURNING 
+    event_id,
+    created_at,
+    updated_at,
+    creator_id,
+    name,
+    ST_Y(location::geometry) as latitude,
+    ST_X(location::geometry) as longitude,
+    datetime,
+    max_attendees,
+    venue,
+    description,
+    status,
+    age_range_min,
+    age_range_max,
+    allow_female,
+    allow_male,
+    allow_diverse,
+    categories
 `
 
-type UpdateEventStatusParams struct {
-	EventID pgtype.UUID     `json:"event_id"`
-	Status  EventStatusType `json:"status"`
+type UpdateEventParams struct {
+	EventID       pgtype.UUID         `json:"event_id"`
+	Status        EventStatusType     `json:"status"`
+	Name          string              `json:"name"`
+	StMakepoint   interface{}         `json:"st_makepoint"`
+	StMakepoint_2 interface{}         `json:"st_makepoint_2"`
+	Datetime      pgtype.Timestamptz  `json:"datetime"`
+	MaxAttendees  int32               `json:"max_attendees"`
+	Venue         pgtype.Text         `json:"venue"`
+	Description   pgtype.Text         `json:"description"`
+	AgeRangeMin   pgtype.Int4         `json:"age_range_min"`
+	AgeRangeMax   pgtype.Int4         `json:"age_range_max"`
+	AllowMale     bool                `json:"allow_male"`
+	AllowFemale   bool                `json:"allow_female"`
+	AllowDiverse  bool                `json:"allow_diverse"`
+	Categories    []EventCategoryType `json:"categories"`
 }
 
-func (q *Queries) UpdateEventStatus(ctx context.Context, arg UpdateEventStatusParams) (Event, error) {
-	row := q.db.QueryRow(ctx, updateEventStatus, arg.EventID, arg.Status)
-	var i Event
+type UpdateEventRow struct {
+	EventID      pgtype.UUID         `json:"event_id"`
+	CreatedAt    pgtype.Timestamptz  `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz  `json:"updated_at"`
+	CreatorID    pgtype.UUID         `json:"creator_id"`
+	Name         string              `json:"name"`
+	Latitude     interface{}         `json:"latitude"`
+	Longitude    interface{}         `json:"longitude"`
+	Datetime     pgtype.Timestamptz  `json:"datetime"`
+	MaxAttendees int32               `json:"max_attendees"`
+	Venue        pgtype.Text         `json:"venue"`
+	Description  pgtype.Text         `json:"description"`
+	Status       EventStatusType     `json:"status"`
+	AgeRangeMin  pgtype.Int4         `json:"age_range_min"`
+	AgeRangeMax  pgtype.Int4         `json:"age_range_max"`
+	AllowFemale  bool                `json:"allow_female"`
+	AllowMale    bool                `json:"allow_male"`
+	AllowDiverse bool                `json:"allow_diverse"`
+	Categories   []EventCategoryType `json:"categories"`
+}
+
+func (q *Queries) UpdateEvent(ctx context.Context, arg UpdateEventParams) (UpdateEventRow, error) {
+	row := q.db.QueryRow(ctx, updateEvent,
+		arg.EventID,
+		arg.Status,
+		arg.Name,
+		arg.StMakepoint,
+		arg.StMakepoint_2,
+		arg.Datetime,
+		arg.MaxAttendees,
+		arg.Venue,
+		arg.Description,
+		arg.AgeRangeMin,
+		arg.AgeRangeMax,
+		arg.AllowMale,
+		arg.AllowFemale,
+		arg.AllowDiverse,
+		arg.Categories,
+	)
+	var i UpdateEventRow
 	err := row.Scan(
 		&i.EventID,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 		&i.CreatorID,
 		&i.Name,
-		&i.Location,
-		&i.EventDatetime,
-		&i.EventTimezone,
+		&i.Latitude,
+		&i.Longitude,
+		&i.Datetime,
 		&i.MaxAttendees,
 		&i.Venue,
 		&i.Description,
-		&i.Thumbnail,
 		&i.Status,
 		&i.AgeRangeMin,
 		&i.AgeRangeMax,
 		&i.AllowFemale,
 		&i.AllowMale,
 		&i.AllowDiverse,
+		&i.Categories,
 	)
 	return i, err
 }

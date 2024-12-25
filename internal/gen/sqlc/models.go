@@ -161,23 +161,24 @@ type ChatMessage struct {
 }
 
 type Event struct {
-	EventID       pgtype.UUID        `json:"event_id"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	CreatorID     pgtype.UUID        `json:"creator_id"`
-	Name          string             `json:"name"`
-	Location      interface{}        `json:"location"`
-	EventDatetime pgtype.Timestamptz `json:"event_datetime"`
-	EventTimezone int32              `json:"event_timezone"`
-	MaxAttendees  int32              `json:"max_attendees"`
-	Venue         pgtype.Text        `json:"venue"`
-	Description   pgtype.Text        `json:"description"`
-	Thumbnail     []byte             `json:"thumbnail"`
-	Status        EventStatusType    `json:"status"`
-	AgeRangeMin   pgtype.Int4        `json:"age_range_min"`
-	AgeRangeMax   pgtype.Int4        `json:"age_range_max"`
-	AllowFemale   bool               `json:"allow_female"`
-	AllowMale     bool               `json:"allow_male"`
-	AllowDiverse  bool               `json:"allow_diverse"`
+	EventID      pgtype.UUID         `json:"event_id"`
+	CreatorID    pgtype.UUID         `json:"creator_id"`
+	CreatedAt    pgtype.Timestamptz  `json:"created_at"`
+	UpdatedAt    pgtype.Timestamptz  `json:"updated_at"`
+	Name         string              `json:"name"`
+	Venue        pgtype.Text         `json:"venue"`
+	Description  pgtype.Text         `json:"description"`
+	Categories   []EventCategoryType `json:"categories"`
+	Status       EventStatusType     `json:"status"`
+	Thumbnail    []byte              `json:"thumbnail"`
+	Location     interface{}         `json:"location"`
+	Datetime     pgtype.Timestamptz  `json:"datetime"`
+	MaxAttendees int32               `json:"max_attendees"`
+	AgeRangeMin  pgtype.Int4         `json:"age_range_min"`
+	AgeRangeMax  pgtype.Int4         `json:"age_range_max"`
+	AllowFemale  bool                `json:"allow_female"`
+	AllowMale    bool                `json:"allow_male"`
+	AllowDiverse bool                `json:"allow_diverse"`
 }
 
 type EventAttendee struct {
@@ -192,11 +193,6 @@ type EventAttendeeStatistic struct {
 	FemaleCount  int64       `json:"female_count"`
 	MaleCount    int64       `json:"male_count"`
 	DiverseCount int64       `json:"diverse_count"`
-}
-
-type EventCategory struct {
-	EventID  pgtype.UUID       `json:"event_id"`
-	Category EventCategoryType `json:"category"`
 }
 
 type MessageLike struct {

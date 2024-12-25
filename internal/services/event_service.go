@@ -2,7 +2,6 @@ package services
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/cridenour/go-postgis"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -31,43 +30,45 @@ func (s *eventService) CreateEvent(ctx context.Context, req *pb.CreateEventReque
 		return nil, err
 	}
 
+	categories := make([]sqlc.EventCategoryType, len(req.Categories))
+	for i, category := range req.Categories {
+		categories[i] = sqlc.EventCategoryType(category.String())
+	}
+
 	params := &sqlc.CreateEventParams{
 		CreatorID:     convertUUID(req.CreatorId),
 		Name:          req.Name,
 		StMakepoint:   req.Location.Longitude,
 		StMakepoint_2: req.Location.Latitude,
-		EventDatetime: pgtype.Timestamptz{Time: req.EventDatetime.AsTime(), Valid: true},
-		EventTimezone: req.EventTimezone,
+		Datetime:      pgtype.Timestamptz{Time: req.Datetime.AsTime(), Valid: true},
 		MaxAttendees:  req.MaxAttendees,
-		Venue:         pgtype.Text{String: req.Venue, Valid: true},
-		Description:   pgtype.Text{String: req.Description, Valid: true},
-		AgeRangeMin:   pgtype.Int4{Int32: req.AgeRangeMin, Valid: true},
-		AgeRangeMax:   pgtype.Int4{Int32: req.AgeRangeMax, Valid: true},
-		AllowFemale:   req.AllowFemale,
-		AllowMale:     req.AllowMale,
-		AllowDiverse:  req.AllowDiverse,
+		Status:        sqlc.EventStatusTypeUpcoming,
+		//Categories:    categories,
+		Venue:        pgtype.Text{String: req.Venue, Valid: true},
+		Description:  pgtype.Text{String: req.Description, Valid: true},
+		AgeRangeMin:  pgtype.Int4{Int32: req.AgeRangeMin, Valid: true},
+		AgeRangeMax:  pgtype.Int4{Int32: req.AgeRangeMax, Valid: true},
+		AllowFemale:  req.AllowFemale,
+		AllowMale:    req.AllowMale,
+		AllowDiverse: req.AllowDiverse,
 	}
 
-	event, err := s.eventRepo.CreateEvent(ctx, params)
+	created_event, err := s.eventRepo.CreateEvent(ctx, params)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create event: %v", err)
 	}
 
-	// Add categories if provided
-	for _, category := range req.Categories {
-		categoryParams := &sqlc.AddEventCategoryParams{
-			EventID:  event.EventID,
-			Category: sqlc.EventCategoryType(category.String()),
-		}
-		if err := s.eventRepo.AddEventCategory(ctx, categoryParams); err != nil {
-			return convertEventToProto(event), status.Errorf(codes.Internal, "failed to add category: %v", err)
-		}
+	if _, err := s.JoinEvent(ctx, &pb.JoinEventRequest{
+		EventId: created_event.EventID.Bytes[:],
+		UserId:  created_event.CreatorID.Bytes[:],
+	}); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to join event: %v", err)
 	}
 
-	return convertEventToProto(event), nil
+	return convertCreateEventResponseToEvent(created_event), nil
 }
 
-func (s *eventService) GetEventByID(ctx context.Context, req *pb.GetEventByIDRequest) (*pb.EventDetails, error) {
+func (s *eventService) GetEventByID(ctx context.Context, req *pb.GetEventByIDRequest) (*pb.Event, error) {
 	if len(req.EventId) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "event_id is required")
 	}
@@ -78,7 +79,7 @@ func (s *eventService) GetEventByID(ctx context.Context, req *pb.GetEventByIDReq
 		return nil, status.Errorf(codes.Internal, "failed to get event: %v", err)
 	}
 
-	return convertEventDetailsToProto(*event), nil
+	return convertGetEventByIdResponseToEvent(*event), nil
 }
 
 func (s *eventService) GetNearbyEvents(ctx context.Context, req *pb.GetNearbyEventsRequest) (*pb.GetNearbyEventsResponse, error) {
@@ -86,9 +87,16 @@ func (s *eventService) GetNearbyEvents(ctx context.Context, req *pb.GetNearbyEve
 		return nil, status.Error(codes.InvalidArgument, "location is required")
 	}
 
-	params := &sqlc.GetNearbyEventsParams{
+	gender, err := convertPBGenderToSQL(req.Gender)
+	if err != nil {
+		return nil, err
+	}
+
+	params := &sqlc.GetNearbyEventsByStatusAndGenderParams{
 		StMakepoint:   req.Location.Longitude,
 		StMakepoint_2: req.Location.Latitude,
+		Column5:       gender,
+		Status:        sqlc.EventStatusTypeUpcoming,
 		StDwithin:     req.RadiusMeters,
 		Limit:         req.Limit,
 	}
@@ -107,7 +115,11 @@ func (s *eventService) GetUserEvents(ctx context.Context, req *pb.GetUserEventsR
 	}
 
 	userID := convertUUID(req.UserId)
-	events, err := s.eventRepo.GetUserEvents(ctx, userID)
+	events, err := s.eventRepo.GetUserEvents(ctx,
+		&sqlc.GetUserEventsParams{
+			UserID: userID,
+			Limit:  500,
+		})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get user events: %v", err)
 	}
@@ -116,34 +128,8 @@ func (s *eventService) GetUserEvents(ctx context.Context, req *pb.GetUserEventsR
 		Events: make([]*pb.Event, len(events)),
 	}
 	//for i, event := range events {
-	//	response.Events[i] = convertEventToProto(event)
+	//	response.Events[i] = convertCreateEventResponseToEvent(event)
 	//}
-
-	return response, nil
-}
-
-func (s *eventService) SearchEvents(ctx context.Context, req *pb.SearchEventsRequest) (*pb.SearchEventsResponse, error) {
-	if req.Query == "" {
-		return nil, status.Error(codes.InvalidArgument, "query is required")
-	}
-
-	params := &sqlc.SearchEventsParams{
-		Lower:  fmt.Sprintf("%%%s%%", req.Query),
-		Limit:  req.Limit,
-		Offset: req.Offset,
-	}
-
-	events, err := s.eventRepo.SearchEvents(ctx, params)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to search events: %v", err)
-	}
-
-	response := &pb.SearchEventsResponse{
-		Events: make([]*pb.EventDetails, len(events)),
-	}
-	for i, event := range events {
-		response.Events[i] = convertSearchEventToProto(event)
-	}
 
 	return response, nil
 }
@@ -200,23 +186,6 @@ func (s *eventService) GetEventAttendeeStats(ctx context.Context, req *pb.GetEve
 	}, nil
 }
 
-func (s *eventService) AddEventCategory(ctx context.Context, req *pb.AddEventCategoryRequest) (*emptypb.Empty, error) {
-	if len(req.EventId) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "event_id is required")
-	}
-
-	params := &sqlc.AddEventCategoryParams{
-		EventID:  convertUUID(req.EventId),
-		Category: sqlc.EventCategoryType(req.Category.String()),
-	}
-
-	if err := s.eventRepo.AddEventCategory(ctx, params); err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to add category: %v", err)
-	}
-
-	return &emptypb.Empty{}, nil
-}
-
 // Helper functions for request validation and data conversion
 
 func validateCreateEventRequest(req *pb.CreateEventRequest) error {
@@ -229,7 +198,7 @@ func validateCreateEventRequest(req *pb.CreateEventRequest) error {
 	if req.Location == nil {
 		return status.Error(codes.InvalidArgument, "location is required")
 	}
-	if req.EventDatetime == nil {
+	if req.Datetime == nil {
 		return status.Error(codes.InvalidArgument, "event_datetime is required")
 	}
 	if req.MaxAttendees <= 0 {
@@ -238,7 +207,7 @@ func validateCreateEventRequest(req *pb.CreateEventRequest) error {
 	return nil
 }
 
-func convertEventToProto(event *sqlc.CreateEventRow) *pb.Event {
+func convertCreateEventResponseToEvent(event *sqlc.CreateEventRow) *pb.Event {
 	return &pb.Event{
 		EventId:   event.EventID.Bytes[:],
 		CreatorId: event.CreatorID.Bytes[:],
@@ -247,51 +216,50 @@ func convertEventToProto(event *sqlc.CreateEventRow) *pb.Event {
 			Latitude:  event.Latitude.(float64),
 			Longitude: event.Longitude.(float64),
 		},
-		EventDatetime: timestamppb.New(event.EventDatetime.Time),
-		EventTimezone: event.EventTimezone,
-		MaxAttendees:  event.MaxAttendees,
-		Venue:         event.Venue.String,
-		Description:   &event.Description.String,
-		Thumbnail:     event.Thumbnail,
-		Status:        pb.EventStatus(pb.EventStatus_value[string(event.Status)]),
-		AgeRangeMin:   event.AgeRangeMin.Int32,
-		AgeRangeMax:   event.AgeRangeMax.Int32,
-		AllowFemale:   event.AllowFemale,
-		AllowMale:     event.AllowMale,
-		AllowDiverse:  event.AllowDiverse,
+		Datetime:          timestamppb.New(event.Datetime.Time),
+		MaxAttendees:      event.MaxAttendees,
+		Venue:             &event.Venue.String,
+		Description:       &event.Description.String,
+		Thumbnail:         event.Thumbnail,
+		Status:            pb.STATUS(pb.STATUS_value[string(event.Status)]),
+		AgeRangeMin:       event.AgeRangeMin.Int32,
+		AgeRangeMax:       event.AgeRangeMax.Int32,
+		AllowFemale:       event.AllowFemale,
+		AllowMale:         event.AllowMale,
+		AllowDiverse:      event.AllowDiverse,
+		Categories:        convertCategoriesToStrings(event.Categories),
+		NumberOfComments:  0, // New event has no comments
+		NumberOfAttendees: 1, // Creator is the first attendee
 	}
 }
 
-func convertEventDetailsToProto(event sqlc.GetEventByIDRow) *pb.EventDetails {
-	return &pb.EventDetails{
-		Event: &pb.Event{
-			EventId:   event.EventID.Bytes[:],
-			CreatorId: event.CreatorID.Bytes[:],
-			Name:      event.Name,
-			Location: &pb.Location{
-				Latitude:  23,
-				Longitude: 24,
-			},
-			EventDatetime: timestamppb.New(event.EventDatetime.Time),
-			EventTimezone: event.EventTimezone,
-			MaxAttendees:  event.MaxAttendees,
-			Venue:         event.Venue.String,
-			Description:   &event.Description.String,
-			Thumbnail:     event.Thumbnail,
-			Status:        pb.EventStatus(pb.EventStatus_value[string(event.Status)]),
-			AgeRangeMin:   event.AgeRangeMin.Int32,
-			AgeRangeMax:   event.AgeRangeMax.Int32,
-			AllowFemale:   event.AllowFemale,
-			AllowMale:     event.AllowMale,
-			AllowDiverse:  event.AllowDiverse,
-			CreatedAt:     timestamppb.New(event.CreatedAt.Time),
+func convertGetEventByIdResponseToEvent(event sqlc.GetEventByIDRow) *pb.Event {
+	return &pb.Event{
+		EventId:   event.EventID.Bytes[:],
+		CreatorId: event.CreatorID.Bytes[:],
+		Name:      event.Name,
+		Location: &pb.Location{
+			Latitude:  event.Latitude.(float64),
+			Longitude: event.Longitude.(float64),
 		},
+		Datetime:          timestamppb.New(event.Datetime.Time),
+		MaxAttendees:      event.MaxAttendees,
+		Venue:             &event.Venue.String,
+		Description:       &event.Description.String,
+		Thumbnail:         event.Thumbnail,
+		Status:            pb.STATUS(pb.STATUS_value[string(event.Status)]),
+		AgeRangeMin:       event.AgeRangeMin.Int32,
+		AgeRangeMax:       event.AgeRangeMax.Int32,
+		AllowFemale:       event.AllowFemale,
+		AllowMale:         event.AllowMale,
+		AllowDiverse:      event.AllowDiverse,
+		Categories:        convertCategoriesToStrings(event.Categories),
 		NumberOfComments:  event.NumberOfComments,
 		NumberOfAttendees: event.NumberOfAttendees,
 	}
 }
 
-func convertNearbyEventsToProto(events []sqlc.GetNearbyEventsRow) *pb.GetNearbyEventsResponse {
+func convertNearbyEventsToProto(events []sqlc.GetNearbyEventsByStatusAndGenderRow) *pb.GetNearbyEventsResponse {
 	response := &pb.GetNearbyEventsResponse{
 		Events: make([]*pb.EventWithDistance, len(events)),
 	}
@@ -303,62 +271,27 @@ func convertNearbyEventsToProto(events []sqlc.GetNearbyEventsRow) *pb.GetNearbyE
 				CreatorId: event.CreatorID.Bytes[:],
 				Name:      event.Name,
 				Location: &pb.Location{
-					Latitude:  23,
-					Longitude: 24,
+					Latitude:  event.Latitude.(float64),
+					Longitude: event.Longitude.(float64),
 				},
-				EventDatetime: timestamppb.New(event.EventDatetime.Time),
-				EventTimezone: event.EventTimezone,
-				MaxAttendees:  event.MaxAttendees,
-				Venue:         event.Venue.String,
-				Status:        pb.EventStatus(pb.EventStatus_value[string(event.Status)]),
-				AgeRangeMin:   event.AgeRangeMin.Int32,
-				AgeRangeMax:   event.AgeRangeMax.Int32,
-				AllowFemale:   event.AllowFemale,
-				AllowMale:     event.AllowMale,
-				AllowDiverse:  event.AllowDiverse,
-				CreatedAt:     timestamppb.New(event.CreatedAt.Time),
+				Datetime:          timestamppb.New(event.Datetime.Time),
+				MaxAttendees:      event.MaxAttendees,
+				Venue:             &event.Venue.String,
+				Status:            pb.STATUS(pb.STATUS_value[string(event.Status)]),
+				AgeRangeMin:       event.AgeRangeMin.Int32,
+				AgeRangeMax:       event.AgeRangeMax.Int32,
+				AllowFemale:       event.AllowFemale,
+				AllowMale:         event.AllowMale,
+				AllowDiverse:      event.AllowDiverse,
+				CreatedAt:         timestamppb.New(event.CreatedAt.Time),
+				NumberOfAttendees: event.NumberOfAttendees,
+				Categories:        convertCategoriesToStrings(event.Categories),
 			},
 			DistanceMeters: event.DistanceMeters.(float64),
 		}
 	}
 
 	return response
-}
-
-func convertSearchEventToProto(event sqlc.SearchEventsRow) *pb.EventDetails {
-	var categories []string
-	// Assuming categories is a JSON array stored as bytes
-	if event.Categories != nil {
-		// In a real implementation, you would properly parse the JSON array
-		// This is a placeholder for the actual JSON parsing logic
-		// categories = parseJSONCategories(event.Categories)
-	}
-
-	return &pb.EventDetails{
-		Event: &pb.Event{
-			EventId:   event.EventID.Bytes[:],
-			CreatorId: event.CreatorID.Bytes[:],
-			Name:      event.Name,
-			Location: &pb.Location{
-				Latitude:  23,
-				Longitude: 24,
-			},
-			EventDatetime: timestamppb.New(event.EventDatetime.Time),
-			EventTimezone: event.EventTimezone,
-			MaxAttendees:  event.MaxAttendees,
-			Venue:         event.Venue.String,
-			Description:   &event.Description.String,
-			Thumbnail:     event.Thumbnail,
-			Status:        pb.EventStatus(pb.EventStatus_value[string(event.Status)]),
-			AgeRangeMin:   event.AgeRangeMin.Int32,
-			AgeRangeMax:   event.AgeRangeMax.Int32,
-			AllowFemale:   event.AllowFemale,
-			AllowMale:     event.AllowMale,
-			AllowDiverse:  event.AllowDiverse,
-			CreatedAt:     timestamppb.New(event.CreatedAt.Time),
-		},
-		Categories: categories,
-	}
 }
 
 func convertLocationToPoint(location *pb.Location) postgis.Point {
@@ -372,4 +305,12 @@ func convertUUID(uuid []byte) pgtype.UUID {
 	var bytes [16]byte
 	copy(bytes[:], uuid)
 	return pgtype.UUID{Bytes: bytes, Valid: true}
+}
+
+func convertCategoriesToStrings(categories []sqlc.EventCategoryType) []string {
+	result := make([]string, len(categories))
+	for i, cat := range categories {
+		result[i] = string(cat)
+	}
+	return result
 }

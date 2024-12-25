@@ -2,11 +2,11 @@
 INSERT INTO events (
     creator_id, name, location, datetime, 
     max_attendees, venue, description, age_range_min, age_range_max,
-    allow_female, allow_male, allow_diverse, thumbnail, categories
+    allow_female, allow_male, allow_diverse, thumbnail, status, categories
 )
 VALUES (
     $1, $2, ST_SetSRID(ST_MakePoint($4, $3), 4326), $5, 
-    $6, $7, $8, $9, $10, $11, $12, $13, $14, $15
+    $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
 )
 RETURNING 
     event_id,
@@ -27,6 +27,7 @@ RETURNING
     allow_male,
     allow_diverse,
     thumbnail,
+    status,
     categories;
 
 -- name: GetEventByID :one

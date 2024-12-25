@@ -24,11 +24,9 @@ const (
 	EventService_GetEventByID_FullMethodName          = "/api.v1.EventService/GetEventByID"
 	EventService_GetNearbyEvents_FullMethodName       = "/api.v1.EventService/GetNearbyEvents"
 	EventService_GetUserEvents_FullMethodName         = "/api.v1.EventService/GetUserEvents"
-	EventService_SearchEvents_FullMethodName          = "/api.v1.EventService/SearchEvents"
 	EventService_JoinEvent_FullMethodName             = "/api.v1.EventService/JoinEvent"
 	EventService_LeaveEvent_FullMethodName            = "/api.v1.EventService/LeaveEvent"
-	EventService_UpdateEventStatus_FullMethodName     = "/api.v1.EventService/UpdateEventStatus"
-	EventService_AddEventCategory_FullMethodName      = "/api.v1.EventService/AddEventCategory"
+	EventService_UpdateEvent_FullMethodName           = "/api.v1.EventService/UpdateEvent"
 	EventService_GetEventAttendeeStats_FullMethodName = "/api.v1.EventService/GetEventAttendeeStats"
 )
 
@@ -37,14 +35,12 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type EventServiceClient interface {
 	CreateEvent(ctx context.Context, in *CreateEventRequest, opts ...grpc.CallOption) (*Event, error)
-	GetEventByID(ctx context.Context, in *GetEventByIDRequest, opts ...grpc.CallOption) (*EventDetails, error)
+	GetEventByID(ctx context.Context, in *GetEventByIDRequest, opts ...grpc.CallOption) (*Event, error)
 	GetNearbyEvents(ctx context.Context, in *GetNearbyEventsRequest, opts ...grpc.CallOption) (*GetNearbyEventsResponse, error)
 	GetUserEvents(ctx context.Context, in *GetUserEventsRequest, opts ...grpc.CallOption) (*GetUserEventsResponse, error)
-	SearchEvents(ctx context.Context, in *SearchEventsRequest, opts ...grpc.CallOption) (*SearchEventsResponse, error)
 	JoinEvent(ctx context.Context, in *JoinEventRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	LeaveEvent(ctx context.Context, in *LeaveEventRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	UpdateEventStatus(ctx context.Context, in *UpdateEventStatusRequest, opts ...grpc.CallOption) (*Event, error)
-	AddEventCategory(ctx context.Context, in *AddEventCategoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	UpdateEvent(ctx context.Context, in *UpdateEventRequest, opts ...grpc.CallOption) (*Event, error)
 	GetEventAttendeeStats(ctx context.Context, in *GetEventAttendeeStatsRequest, opts ...grpc.CallOption) (*EventAttendeeStats, error)
 }
 
@@ -66,9 +62,9 @@ func (c *eventServiceClient) CreateEvent(ctx context.Context, in *CreateEventReq
 	return out, nil
 }
 
-func (c *eventServiceClient) GetEventByID(ctx context.Context, in *GetEventByIDRequest, opts ...grpc.CallOption) (*EventDetails, error) {
+func (c *eventServiceClient) GetEventByID(ctx context.Context, in *GetEventByIDRequest, opts ...grpc.CallOption) (*Event, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(EventDetails)
+	out := new(Event)
 	err := c.cc.Invoke(ctx, EventService_GetEventByID_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
@@ -96,16 +92,6 @@ func (c *eventServiceClient) GetUserEvents(ctx context.Context, in *GetUserEvent
 	return out, nil
 }
 
-func (c *eventServiceClient) SearchEvents(ctx context.Context, in *SearchEventsRequest, opts ...grpc.CallOption) (*SearchEventsResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SearchEventsResponse)
-	err := c.cc.Invoke(ctx, EventService_SearchEvents_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *eventServiceClient) JoinEvent(ctx context.Context, in *JoinEventRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -126,20 +112,10 @@ func (c *eventServiceClient) LeaveEvent(ctx context.Context, in *LeaveEventReque
 	return out, nil
 }
 
-func (c *eventServiceClient) UpdateEventStatus(ctx context.Context, in *UpdateEventStatusRequest, opts ...grpc.CallOption) (*Event, error) {
+func (c *eventServiceClient) UpdateEvent(ctx context.Context, in *UpdateEventRequest, opts ...grpc.CallOption) (*Event, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(Event)
-	err := c.cc.Invoke(ctx, EventService_UpdateEventStatus_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *eventServiceClient) AddEventCategory(ctx context.Context, in *AddEventCategoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(emptypb.Empty)
-	err := c.cc.Invoke(ctx, EventService_AddEventCategory_FullMethodName, in, out, cOpts...)
+	err := c.cc.Invoke(ctx, EventService_UpdateEvent_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -161,14 +137,12 @@ func (c *eventServiceClient) GetEventAttendeeStats(ctx context.Context, in *GetE
 // for forward compatibility.
 type EventServiceServer interface {
 	CreateEvent(context.Context, *CreateEventRequest) (*Event, error)
-	GetEventByID(context.Context, *GetEventByIDRequest) (*EventDetails, error)
+	GetEventByID(context.Context, *GetEventByIDRequest) (*Event, error)
 	GetNearbyEvents(context.Context, *GetNearbyEventsRequest) (*GetNearbyEventsResponse, error)
 	GetUserEvents(context.Context, *GetUserEventsRequest) (*GetUserEventsResponse, error)
-	SearchEvents(context.Context, *SearchEventsRequest) (*SearchEventsResponse, error)
 	JoinEvent(context.Context, *JoinEventRequest) (*emptypb.Empty, error)
 	LeaveEvent(context.Context, *LeaveEventRequest) (*emptypb.Empty, error)
-	UpdateEventStatus(context.Context, *UpdateEventStatusRequest) (*Event, error)
-	AddEventCategory(context.Context, *AddEventCategoryRequest) (*emptypb.Empty, error)
+	UpdateEvent(context.Context, *UpdateEventRequest) (*Event, error)
 	GetEventAttendeeStats(context.Context, *GetEventAttendeeStatsRequest) (*EventAttendeeStats, error)
 	mustEmbedUnimplementedEventServiceServer()
 }
@@ -183,7 +157,7 @@ type UnimplementedEventServiceServer struct{}
 func (UnimplementedEventServiceServer) CreateEvent(context.Context, *CreateEventRequest) (*Event, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateEvent not implemented")
 }
-func (UnimplementedEventServiceServer) GetEventByID(context.Context, *GetEventByIDRequest) (*EventDetails, error) {
+func (UnimplementedEventServiceServer) GetEventByID(context.Context, *GetEventByIDRequest) (*Event, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetEventByID not implemented")
 }
 func (UnimplementedEventServiceServer) GetNearbyEvents(context.Context, *GetNearbyEventsRequest) (*GetNearbyEventsResponse, error) {
@@ -192,20 +166,14 @@ func (UnimplementedEventServiceServer) GetNearbyEvents(context.Context, *GetNear
 func (UnimplementedEventServiceServer) GetUserEvents(context.Context, *GetUserEventsRequest) (*GetUserEventsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetUserEvents not implemented")
 }
-func (UnimplementedEventServiceServer) SearchEvents(context.Context, *SearchEventsRequest) (*SearchEventsResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method SearchEvents not implemented")
-}
 func (UnimplementedEventServiceServer) JoinEvent(context.Context, *JoinEventRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method JoinEvent not implemented")
 }
 func (UnimplementedEventServiceServer) LeaveEvent(context.Context, *LeaveEventRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method LeaveEvent not implemented")
 }
-func (UnimplementedEventServiceServer) UpdateEventStatus(context.Context, *UpdateEventStatusRequest) (*Event, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method UpdateEventStatus not implemented")
-}
-func (UnimplementedEventServiceServer) AddEventCategory(context.Context, *AddEventCategoryRequest) (*emptypb.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method AddEventCategory not implemented")
+func (UnimplementedEventServiceServer) UpdateEvent(context.Context, *UpdateEventRequest) (*Event, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method UpdateEvent not implemented")
 }
 func (UnimplementedEventServiceServer) GetEventAttendeeStats(context.Context, *GetEventAttendeeStatsRequest) (*EventAttendeeStats, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetEventAttendeeStats not implemented")
@@ -303,24 +271,6 @@ func _EventService_GetUserEvents_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EventService_SearchEvents_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SearchEventsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EventServiceServer).SearchEvents(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: EventService_SearchEvents_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EventServiceServer).SearchEvents(ctx, req.(*SearchEventsRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _EventService_JoinEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(JoinEventRequest)
 	if err := dec(in); err != nil {
@@ -357,38 +307,20 @@ func _EventService_LeaveEvent_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
-func _EventService_UpdateEventStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(UpdateEventStatusRequest)
+func _EventService_UpdateEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateEventRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(EventServiceServer).UpdateEventStatus(ctx, in)
+		return srv.(EventServiceServer).UpdateEvent(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: EventService_UpdateEventStatus_FullMethodName,
+		FullMethod: EventService_UpdateEvent_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EventServiceServer).UpdateEventStatus(ctx, req.(*UpdateEventStatusRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _EventService_AddEventCategory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(AddEventCategoryRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EventServiceServer).AddEventCategory(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: EventService_AddEventCategory_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EventServiceServer).AddEventCategory(ctx, req.(*AddEventCategoryRequest))
+		return srv.(EventServiceServer).UpdateEvent(ctx, req.(*UpdateEventRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -435,10 +367,6 @@ var EventService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _EventService_GetUserEvents_Handler,
 		},
 		{
-			MethodName: "SearchEvents",
-			Handler:    _EventService_SearchEvents_Handler,
-		},
-		{
 			MethodName: "JoinEvent",
 			Handler:    _EventService_JoinEvent_Handler,
 		},
@@ -447,12 +375,8 @@ var EventService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _EventService_LeaveEvent_Handler,
 		},
 		{
-			MethodName: "UpdateEventStatus",
-			Handler:    _EventService_UpdateEventStatus_Handler,
-		},
-		{
-			MethodName: "AddEventCategory",
-			Handler:    _EventService_AddEventCategory_Handler,
+			MethodName: "UpdateEvent",
+			Handler:    _EventService_UpdateEvent_Handler,
 		},
 		{
 			MethodName: "GetEventAttendeeStats",
