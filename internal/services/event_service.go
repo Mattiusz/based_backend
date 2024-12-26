@@ -106,7 +106,7 @@ func (s *eventService) GetNearbyEvents(ctx context.Context, req *pb.GetNearbyEve
 		return nil, status.Errorf(codes.Internal, "failed to get nearby events: %v", err)
 	}
 
-	return convertNearbyEventsToProto(events), nil
+	return convertGetNearbyEventsResponseToProto(events), nil
 }
 
 func (s *eventService) GetUserEvents(ctx context.Context, req *pb.GetUserEventsRequest) (*pb.GetUserEventsResponse, error) {
@@ -124,14 +124,7 @@ func (s *eventService) GetUserEvents(ctx context.Context, req *pb.GetUserEventsR
 		return nil, status.Errorf(codes.Internal, "failed to get user events: %v", err)
 	}
 
-	response := &pb.GetUserEventsResponse{
-		Events: make([]*pb.Event, len(events)),
-	}
-	for i, event := range events {
-		response.Events[i] = convertGetUserEventResponseToEvent(&event)
-	}
-
-	return response, nil
+	return convertGetUserEventsResponseToEvent(events), nil
 }
 
 func (s *eventService) JoinEvent(ctx context.Context, req *pb.JoinEventRequest) (*emptypb.Empty, error) {
@@ -239,36 +232,41 @@ func convertCreateEventResponseToEvent(event *sqlc.CreateEventRow) *pb.Event {
 	}
 }
 
-func convertGetUserEventResponseToEvent(event *sqlc.GetUserEventsRow) *pb.Event {
-	categories := make([]string, len(event.Categories))
-	for i, category := range event.Categories {
-		categories[i] = convertSQLCategoryToPB(category).String()
+func convertGetUserEventsResponseToEvent(events []sqlc.GetUserEventsRow) *pb.GetUserEventsResponse {
+	response := &pb.GetUserEventsResponse{
+		Events: make([]*pb.Event, len(events)),
 	}
 
-	return &pb.Event{
-		EventId:   event.EventID.Bytes[:],
-		CreatorId: event.CreatorID.Bytes[:],
-		CreatedAt: timestamppb.New(event.CreatedAt.Time),
-		Name:      event.Name,
-		Location: &pb.Location{
-			Latitude:  event.Latitude.(float64),
-			Longitude: event.Longitude.(float64),
-		},
-		Datetime:          timestamppb.New(event.Datetime.Time),
-		MaxAttendees:      event.MaxAttendees,
-		Venue:             &event.Venue.String,
-		Description:       &event.Description.String,
-		Thumbnail:         event.Thumbnail,
-		Status:            convertSQLStatusToPB(event.Status),
-		AgeRangeMin:       event.AgeRangeMin.Int32,
-		AgeRangeMax:       event.AgeRangeMax.Int32,
-		AllowFemale:       event.AllowFemale,
-		AllowMale:         event.AllowMale,
-		AllowDiverse:      event.AllowDiverse,
-		Categories:        categories,
-		NumberOfComments:  0,
-		NumberOfAttendees: event.NumberOfAttendees,
+	for i, event := range events {
+		categories := make([]string, len(event.Categories))
+		for i, category := range event.Categories {
+			categories[i] = convertSQLCategoryToPB(category).String()
+		}
+
+		response.Events[i] = &pb.Event{
+			EventId:   event.EventID.Bytes[:],
+			CreatorId: event.CreatorID.Bytes[:],
+			Name:      event.Name,
+			Location: &pb.Location{
+				Latitude:  event.Latitude.(float64),
+				Longitude: event.Longitude.(float64),
+			},
+			Datetime:          timestamppb.New(event.Datetime.Time),
+			MaxAttendees:      event.MaxAttendees,
+			Venue:             &event.Venue.String,
+			Status:            convertSQLStatusToPB(event.Status),
+			AgeRangeMin:       event.AgeRangeMin.Int32,
+			AgeRangeMax:       event.AgeRangeMax.Int32,
+			AllowFemale:       event.AllowFemale,
+			AllowMale:         event.AllowMale,
+			AllowDiverse:      event.AllowDiverse,
+			CreatedAt:         timestamppb.New(event.CreatedAt.Time),
+			NumberOfAttendees: event.NumberOfAttendees,
+			Categories:        categories,
+		}
 	}
+
+	return response
 }
 
 func convertGetEventByIdResponseToEvent(event sqlc.GetEventByIDRow) *pb.Event {
@@ -302,7 +300,7 @@ func convertGetEventByIdResponseToEvent(event sqlc.GetEventByIDRow) *pb.Event {
 	}
 }
 
-func convertNearbyEventsToProto(events []sqlc.GetNearbyEventsByStatusAndGenderRow) *pb.GetNearbyEventsResponse {
+func convertGetNearbyEventsResponseToProto(events []sqlc.GetNearbyEventsByStatusAndGenderRow) *pb.GetNearbyEventsResponse {
 	response := &pb.GetNearbyEventsResponse{
 		Events: make([]*pb.EventWithDistance, len(events)),
 	}

@@ -25,10 +25,11 @@ func NewDB(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
 	poolConfig.MaxConns = cfg.MaxPoolConns
 	poolConfig.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
 		dataTypeNames := []string{
+			// Custom sqlc data types
 			"gender_type",
-			"_gender_type",
+			"_gender_type", // array type
 			"event_status_type",
-			"_event_status_type",
+			"_event_status_type", // array type
 			"event_category_type",
 			"_event_category_type", // array type
 		}
