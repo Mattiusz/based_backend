@@ -167,29 +167,39 @@ RETURNING
 
 -- name: GetUserEvents :many
 SELECT 
-    e.*,
-    ST_Y(e.location::geometry) as latitude,
-    ST_X(e.location::geometry) as longitude,
-    COUNT(DISTINCT ea.user_id) as number_of_attendees
-FROM events e
-JOIN event_attendees ea ON e.event_id = ea.event_id
-WHERE ea.user_id = $1
-GROUP BY 
     e.event_id,
     e.created_at,
+    e.updated_at,
     e.creator_id,
     e.name,
-    e.location,
+    ST_Y(e.location::geometry) as latitude,
+    ST_X(e.location::geometry) as longitude,
     e.datetime,
     e.max_attendees,
     e.venue,
+    e.description,
     e.status,
     e.age_range_min,
     e.age_range_max,
     e.allow_female,
     e.allow_male,
     e.allow_diverse,
-    e.categories
+    e.categories,
+    COALESCE(cm.comment_count, 0) as number_of_comments,
+    COALESCE(ea.attendee_count, 0) as number_of_attendees
+FROM events e
+INNER JOIN event_attendees my_attendance ON e.event_id = my_attendance.event_id 
+    AND my_attendance.user_id = $1
+LEFT JOIN (
+    SELECT event_id, COUNT(*) as comment_count
+    FROM chat_messages
+    GROUP BY event_id
+) cm ON e.event_id = cm.event_id
+LEFT JOIN (
+    SELECT event_id, COUNT(*) as attendee_count
+    FROM event_attendees
+    GROUP BY event_id
+) ea ON e.event_id = ea.event_id
 ORDER BY e.datetime DESC
 LIMIT $2;
 
