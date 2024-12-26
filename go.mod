@@ -33,6 +33,7 @@ require (
 
 require (
 	github.com/gofrs/uuid v4.4.0+incompatible // indirect
+	github.com/grpc-ecosystem/go-grpc-middleware/v2 v2.2.0
 	golang.org/x/net v0.29.0 // indirect
 	golang.org/x/sync v0.8.0 // indirect
 	golang.org/x/sys v0.25.0 // indirect
