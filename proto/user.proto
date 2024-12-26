@@ -23,14 +23,12 @@ message User {
   string display_name = 2;
   google.protobuf.Timestamp birthday = 3;
   GENDER gender = 4;
-  repeated string attending_event_ids = 5;
 }
 
 message CreateUserRequest {
   google.protobuf.Timestamp birthday = 1;
   string display_name = 2;
   GENDER gender = 3;
-  repeated string attending_event_ids = 4;
 }
 
 message UpdateUserRequest {
@@ -38,7 +36,6 @@ message UpdateUserRequest {
   string display_name = 2;
   google.protobuf.Timestamp birthday = 3;
   GENDER gender = 4;
-  repeated string attending_event_ids = 5;
 }
 
 message GetUserRequest {

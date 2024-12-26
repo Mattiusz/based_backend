@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "github.com/mattiusz/based_backend/internal/gen/proto"
 	"github.com/mattiusz/based_backend/internal/gen/sqlc"
@@ -96,8 +97,10 @@ func (s *userService) UpdateUser(ctx context.Context, req *pb.UpdateUserRequest)
 	}
 
 	params := &sqlc.UpdateUserParams{
-		Name:   req.DisplayName,
-		Gender: user.Gender,
+		UserID:   userID,
+		Name:     req.DisplayName,
+		Birthday: pgtype.Date{Time: req.Birthday.AsTime(), Valid: req.Birthday != nil},
+		Gender:   user.Gender,
 	}
 
 	updated_user, err := s.userRepo.UpdateUser(ctx, params)
@@ -109,13 +112,12 @@ func (s *userService) UpdateUser(ctx context.Context, req *pb.UpdateUserRequest)
 	if err != nil {
 		return nil, err
 	}
-
 	return &pb.User{
 		UserId:      updated_user.UserID.Bytes[:],
 		DisplayName: updated_user.Name,
+		Birthday:    timestamppb.New(updated_user.Birthday.Time),
 		Gender:      gender_pb,
 	}, nil
-
 }
 
 func (s *userService) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.User, error) {
@@ -141,6 +143,7 @@ func (s *userService) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.
 	return &pb.User{
 		UserId:      user.UserID.Bytes[:],
 		DisplayName: user.Name,
+		Birthday:    timestamppb.New(user.Birthday.Time),
 		Gender:      gender,
 	}, nil
 }
