@@ -12,9 +12,9 @@ import (
 )
 
 const createUser = `-- name: CreateUser :one
-INSERT INTO users (name, birthday, gender, created_at)
-VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
-RETURNING user_id, name, birthday, gender, created_at
+INSERT INTO users (name, birthday, gender, created_at, updated_at)
+VALUES ($1, $2, $3, NOW(), NOW())
+RETURNING user_id, name, birthday, gender, created_at, updated_at
 `
 
 type CreateUserParams struct {
@@ -32,12 +32,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.Birthday,
 		&i.Gender,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT user_id, name, birthday, gender, created_at FROM users WHERE user_id = $1
+SELECT user_id, name, birthday, gender, created_at, updated_at FROM users WHERE user_id = $1
 `
 
 func (q *Queries) GetUserByID(ctx context.Context, userID pgtype.UUID) (User, error) {
@@ -49,6 +50,7 @@ func (q *Queries) GetUserByID(ctx context.Context, userID pgtype.UUID) (User, er
 		&i.Birthday,
 		&i.Gender,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -57,9 +59,10 @@ const updateUser = `-- name: UpdateUser :one
 UPDATE users
 SET name = $2,
     birthday = $3,
-    gender = $4
+    gender = $4,
+    updated_at = NOW()
 WHERE user_id = $1
-RETURNING user_id, name, birthday, gender, created_at
+RETURNING user_id, name, birthday, gender, created_at, updated_at
 `
 
 type UpdateUserParams struct {
@@ -83,6 +86,7 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) (User, e
 		&i.Birthday,
 		&i.Gender,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }

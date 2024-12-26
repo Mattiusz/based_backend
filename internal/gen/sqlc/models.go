@@ -209,4 +209,5 @@ type User struct {
 	Birthday  pgtype.Date        `json:"birthday"`
 	Gender    GenderType         `json:"gender"`
 	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	UpdatedAt pgtype.Timestamptz `json:"updated_at"`
 }

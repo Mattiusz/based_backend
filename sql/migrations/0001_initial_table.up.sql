@@ -15,7 +15,8 @@ CREATE TABLE users (
     name TEXT NOT NULL,
     birthday DATE NOT NULL,
     gender gender_type NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- Events table

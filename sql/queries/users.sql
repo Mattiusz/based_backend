@@ -1,13 +1,14 @@
 -- name: CreateUser :one
-INSERT INTO users (name, birthday, gender, created_at)
-VALUES ($1, $2, $3, CURRENT_TIMESTAMP)
+INSERT INTO users (name, birthday, gender, created_at, updated_at)
+VALUES ($1, $2, $3, NOW(), NOW())
 RETURNING *;
 
 -- name: UpdateUser :one
 UPDATE users
 SET name = $2,
     birthday = $3,
-    gender = $4
+    gender = $4,
+    updated_at = NOW()
 WHERE user_id = $1
 RETURNING *;
 
