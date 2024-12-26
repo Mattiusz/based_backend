@@ -1,6 +1,6 @@
 
 -- name: CreateChatMessage :one
-INSERT INTO chat_messages (event_id, user_id, comment)
+INSERT INTO chat_messages (event_id, user_id, message)
 VALUES ($1, $2, $3)
 RETURNING *;
 

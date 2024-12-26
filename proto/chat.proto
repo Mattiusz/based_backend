@@ -19,7 +19,7 @@ message ChatMessage {
   bytes message_id = 1;
   bytes event_id = 2;
   bytes user_id = 3;
-  string comment = 4;
+  string message = 4;
   google.protobuf.Timestamp timestamp = 5;
   int32 number_of_likes = 6;
   bool is_liked_by_user = 7;
@@ -28,7 +28,7 @@ message ChatMessage {
 message CreateMessageRequest {
   bytes event_id = 1;
   bytes user_id = 2;
-  string comment = 3;
+  string message = 3;
 }
 
 message GetEventMessagesRequest {

@@ -157,7 +157,7 @@ type ChatMessage struct {
 	MessageID pgtype.UUID        `json:"message_id"`
 	EventID   pgtype.UUID        `json:"event_id"`
 	UserID    pgtype.UUID        `json:"user_id"`
-	Comment   string             `json:"comment"`
+	Message   string             `json:"message"`
 	Timestamp pgtype.Timestamptz `json:"timestamp"`
 }
 

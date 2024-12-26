@@ -12,25 +12,25 @@ import (
 )
 
 const createChatMessage = `-- name: CreateChatMessage :one
-INSERT INTO chat_messages (event_id, user_id, comment)
+INSERT INTO chat_messages (event_id, user_id, message)
 VALUES ($1, $2, $3)
-RETURNING message_id, event_id, user_id, comment, timestamp
+RETURNING message_id, event_id, user_id, message, timestamp
 `
 
 type CreateChatMessageParams struct {
 	EventID pgtype.UUID `json:"event_id"`
 	UserID  pgtype.UUID `json:"user_id"`
-	Comment string      `json:"comment"`
+	Message string      `json:"message"`
 }
 
 func (q *Queries) CreateChatMessage(ctx context.Context, arg CreateChatMessageParams) (ChatMessage, error) {
-	row := q.db.QueryRow(ctx, createChatMessage, arg.EventID, arg.UserID, arg.Comment)
+	row := q.db.QueryRow(ctx, createChatMessage, arg.EventID, arg.UserID, arg.Message)
 	var i ChatMessage
 	err := row.Scan(
 		&i.MessageID,
 		&i.EventID,
 		&i.UserID,
-		&i.Comment,
+		&i.Message,
 		&i.Timestamp,
 	)
 	return i, err
@@ -38,7 +38,7 @@ func (q *Queries) CreateChatMessage(ctx context.Context, arg CreateChatMessagePa
 
 const getEventMessages = `-- name: GetEventMessages :many
 SELECT 
-    cm.message_id, cm.event_id, cm.user_id, cm.comment, cm.timestamp,
+    cm.message_id, cm.event_id, cm.user_id, cm.message, cm.timestamp,
     COUNT(ml.user_id) as number_of_likes,
     EXISTS(
         SELECT 1 FROM message_likes 
@@ -60,7 +60,7 @@ type GetEventMessagesRow struct {
 	MessageID     pgtype.UUID        `json:"message_id"`
 	EventID       pgtype.UUID        `json:"event_id"`
 	UserID        pgtype.UUID        `json:"user_id"`
-	Comment       string             `json:"comment"`
+	Message       string             `json:"message"`
 	Timestamp     pgtype.Timestamptz `json:"timestamp"`
 	NumberOfLikes int64              `json:"number_of_likes"`
 	IsLikedByUser bool               `json:"is_liked_by_user"`
@@ -79,7 +79,7 @@ func (q *Queries) GetEventMessages(ctx context.Context, arg GetEventMessagesPara
 			&i.MessageID,
 			&i.EventID,
 			&i.UserID,
-			&i.Comment,
+			&i.Message,
 			&i.Timestamp,
 			&i.NumberOfLikes,
 			&i.IsLikedByUser,

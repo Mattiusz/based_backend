@@ -18,7 +18,7 @@ import (
 type chatService struct {
 	pb.UnimplementedChatServiceServer
 	chatRepo    repositories.ChatRepository
-	subscribers sync.Map // map[string][]chan *pb.ChatMessage
+	subscribers sync.Map
 	mu          sync.RWMutex
 }
 
@@ -40,14 +40,14 @@ func NewChatService(repo repositories.ChatRepository) pb.ChatServiceServer {
 }
 
 func (s *chatService) CreateMessage(ctx context.Context, req *pb.CreateMessageRequest) (*pb.ChatMessage, error) {
-	if len(req.EventId) == 0 || len(req.UserId) == 0 || req.Comment == "" {
+	if len(req.EventId) == 0 || len(req.UserId) == 0 || req.Message == "" {
 		return nil, status.Error(codes.InvalidArgument, "event_id, user_id, and comment are required")
 	}
 
 	params := &sqlc.CreateChatMessageParams{
 		EventID: convertUUID(req.EventId),
 		UserID:  convertUUID(req.UserId),
-		Comment: req.Comment,
+		Message: req.Message,
 	}
 
 	msg, err := s.chatRepo.CreateMessage(ctx, params)
@@ -59,7 +59,7 @@ func (s *chatService) CreateMessage(ctx context.Context, req *pb.CreateMessageRe
 		MessageId: msg.MessageID.Bytes[:],
 		EventId:   msg.EventID.Bytes[:],
 		UserId:    msg.UserID.Bytes[:],
-		Comment:   msg.Comment,
+		Message:   msg.Message,
 		Timestamp: timestamppb.New(msg.Timestamp.Time),
 	}
 
@@ -91,7 +91,7 @@ func (s *chatService) GetEventMessages(ctx context.Context, req *pb.GetEventMess
 			MessageId:     msg.MessageID.Bytes[:],
 			EventId:       msg.EventID.Bytes[:],
 			UserId:        msg.UserID.Bytes[:],
-			Comment:       msg.Comment,
+			Message:       msg.Message,
 			Timestamp:     timestamppb.New(msg.Timestamp.Time),
 			NumberOfLikes: int32(msg.NumberOfLikes),
 			IsLikedByUser: msg.IsLikedByUser,
@@ -170,7 +170,7 @@ func (s *chatService) StreamEventMessages(req *pb.StreamEventMessagesRequest, st
 			MessageId:     msg.MessageID.Bytes[:],
 			EventId:       msg.EventID.Bytes[:],
 			UserId:        msg.UserID.Bytes[:],
-			Comment:       msg.Comment,
+			Message:       msg.Message,
 			Timestamp:     timestamppb.New(msg.Timestamp.Time),
 			NumberOfLikes: int32(msg.NumberOfLikes),
 			IsLikedByUser: msg.IsLikedByUser,
@@ -235,16 +235,24 @@ func (s *chatService) broadcastMessage(msg *pb.ChatMessage) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	if val, ok := s.subscribers.Load(msg.EventId); ok {
-		subs := val.([]*subscriber)
-		for _, sub := range subs {
-			select {
-			case sub.messages <- msg:
-				// Message sent successfully
-			default:
-				// Channel is full, skip this subscriber
-				go s.removeSubscriber(msg.EventId, sub)
-			}
+	val, ok := s.subscribers.Load(string(msg.EventId))
+	if !ok {
+		return // No subscribers, just return
+	}
+
+	subs, ok := val.([]*subscriber)
+	if !ok {
+		// Log error if needed - type assertion failed
+		return
+	}
+
+	for _, sub := range subs {
+		select {
+		case sub.messages <- msg:
+			// Message sent successfully
+		default:
+			// Channel is full, skip this subscriber
+			go s.removeSubscriber(msg.EventId, sub)
 		}
 	}
 }

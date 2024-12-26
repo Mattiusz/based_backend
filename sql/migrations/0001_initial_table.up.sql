@@ -59,7 +59,7 @@ CREATE TABLE chat_messages (
     message_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     event_id UUID NOT NULL REFERENCES events(event_id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-    comment TEXT NOT NULL,
+    message TEXT NOT NULL,
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     UNIQUE (event_id, timestamp)
 );
