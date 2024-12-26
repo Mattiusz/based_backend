@@ -9,6 +9,7 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/grpc-ecosystem/go-grpc-middleware/v2/interceptors/recovery"
 	"github.com/mattiusz/based_backend/internal/config"
 	"github.com/mattiusz/based_backend/internal/db"
 	v1 "github.com/mattiusz/based_backend/internal/gen/proto"
@@ -55,16 +56,14 @@ func main() {
 	eventService := services.NewEventService(eventRepo)
 
 	// Initialize gRPC server
-	//
 	grpcServer := grpc.NewServer(
-	//grpc.ChainUnaryInterceptor(
-	//recovery.UnaryServerInterceptor(recovery.WithRecoveryHandler(grpcPanicRecoveryHandler)),
-	//),
-	//grpc.ChainStreamInterceptor(
-	//	recovery.StreamServerInterceptor(recovery.WithRecoveryHandler(grpcPanicRecoveryHandler)),
-	//),
+		grpc.ChainUnaryInterceptor(
+			recovery.UnaryServerInterceptor(recovery.WithRecoveryHandler(grpcPanicRecoveryHandler)),
+		),
+		grpc.ChainStreamInterceptor(
+			recovery.StreamServerInterceptor(recovery.WithRecoveryHandler(grpcPanicRecoveryHandler)),
+		),
 	)
-	//
 
 	v1.RegisterUserServiceServer(grpcServer, userService)
 	v1.RegisterChatServiceServer(grpcServer, chatService)
