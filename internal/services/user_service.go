@@ -77,6 +77,7 @@ func (s *userService) CreateUser(ctx context.Context, req *pb.CreateUserRequest)
 	return &pb.User{
 		UserId:      user.UserID.Bytes[:],
 		DisplayName: user.Name,
+		Birthday:    timestamppb.New(user.Birthday.Time),
 		Gender:      gender_pb,
 	}, nil
 }

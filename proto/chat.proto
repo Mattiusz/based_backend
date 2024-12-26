@@ -21,9 +21,8 @@ message ChatMessage {
   bytes user_id = 3;
   string comment = 4;
   google.protobuf.Timestamp timestamp = 5;
-  int32 message_index = 6;
-  int32 number_of_likes = 7;
-  bool is_liked_by_user = 8;
+  int32 number_of_likes = 6;
+  bool is_liked_by_user = 7;
 }
 
 message CreateMessageRequest {

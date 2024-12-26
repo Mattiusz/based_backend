@@ -14,7 +14,7 @@ import (
 const createChatMessage = `-- name: CreateChatMessage :one
 INSERT INTO chat_messages (event_id, user_id, comment)
 VALUES ($1, $2, $3)
-RETURNING message_id, event_id, user_id, comment, timestamp, message_index
+RETURNING message_id, event_id, user_id, comment, timestamp
 `
 
 type CreateChatMessageParams struct {
@@ -32,14 +32,13 @@ func (q *Queries) CreateChatMessage(ctx context.Context, arg CreateChatMessagePa
 		&i.UserID,
 		&i.Comment,
 		&i.Timestamp,
-		&i.MessageIndex,
 	)
 	return i, err
 }
 
 const getEventMessages = `-- name: GetEventMessages :many
 SELECT 
-    cm.message_id, cm.event_id, cm.user_id, cm.comment, cm.timestamp, cm.message_index,
+    cm.message_id, cm.event_id, cm.user_id, cm.comment, cm.timestamp,
     COUNT(ml.user_id) as number_of_likes,
     EXISTS(
         SELECT 1 FROM message_likes 
@@ -63,7 +62,6 @@ type GetEventMessagesRow struct {
 	UserID        pgtype.UUID        `json:"user_id"`
 	Comment       string             `json:"comment"`
 	Timestamp     pgtype.Timestamptz `json:"timestamp"`
-	MessageIndex  int32              `json:"message_index"`
 	NumberOfLikes int64              `json:"number_of_likes"`
 	IsLikedByUser bool               `json:"is_liked_by_user"`
 }
@@ -83,7 +81,6 @@ func (q *Queries) GetEventMessages(ctx context.Context, arg GetEventMessagesPara
 			&i.UserID,
 			&i.Comment,
 			&i.Timestamp,
-			&i.MessageIndex,
 			&i.NumberOfLikes,
 			&i.IsLikedByUser,
 		); err != nil {

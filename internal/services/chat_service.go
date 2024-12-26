@@ -10,7 +10,6 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	"github.com/jackc/pgx/v5/pgtype"
 	pb "github.com/mattiusz/based_backend/internal/gen/proto"
 	"github.com/mattiusz/based_backend/internal/gen/sqlc"
 	"github.com/mattiusz/based_backend/internal/repositories"
@@ -46,8 +45,8 @@ func (s *chatService) CreateMessage(ctx context.Context, req *pb.CreateMessageRe
 	}
 
 	params := &sqlc.CreateChatMessageParams{
-		EventID: pgtype.UUID{}, // Parse from req.EventId
-		UserID:  pgtype.UUID{}, // Parse from req.UserId
+		EventID: convertUUID(req.EventId),
+		UserID:  convertUUID(req.UserId),
 		Comment: req.Comment,
 	}
 
@@ -57,12 +56,11 @@ func (s *chatService) CreateMessage(ctx context.Context, req *pb.CreateMessageRe
 	}
 
 	pb_msg := &pb.ChatMessage{
-		MessageId:    msg.MessageID.Bytes[:],
-		EventId:      msg.EventID.Bytes[:],
-		UserId:       msg.UserID.Bytes[:],
-		Comment:      msg.Comment,
-		Timestamp:    timestamppb.New(msg.Timestamp.Time),
-		MessageIndex: msg.MessageIndex,
+		MessageId: msg.MessageID.Bytes[:],
+		EventId:   msg.EventID.Bytes[:],
+		UserId:    msg.UserID.Bytes[:],
+		Comment:   msg.Comment,
+		Timestamp: timestamppb.New(msg.Timestamp.Time),
 	}
 
 	s.broadcastMessage(pb_msg)
@@ -75,8 +73,8 @@ func (s *chatService) GetEventMessages(ctx context.Context, req *pb.GetEventMess
 	}
 
 	params := &sqlc.GetEventMessagesParams{
-		EventID: pgtype.UUID{}, // Parse from req.EventId
-		UserID:  pgtype.UUID{}, // Parse from req.UserId
+		EventID: convertUUID(req.EventId),
+		UserID:  convertUUID(req.UserId),
 	}
 
 	messages, err := s.chatRepo.GetEventMessages(ctx, params)
@@ -95,7 +93,6 @@ func (s *chatService) GetEventMessages(ctx context.Context, req *pb.GetEventMess
 			UserId:        msg.UserID.Bytes[:],
 			Comment:       msg.Comment,
 			Timestamp:     timestamppb.New(msg.Timestamp.Time),
-			MessageIndex:  msg.MessageIndex,
 			NumberOfLikes: int32(msg.NumberOfLikes),
 			IsLikedByUser: msg.IsLikedByUser,
 		}
@@ -110,8 +107,8 @@ func (s *chatService) LikeMessage(ctx context.Context, req *pb.LikeMessageReques
 	}
 
 	params := &sqlc.LikeMessageParams{
-		MessageID: pgtype.UUID{}, // Parse from req.MessageId
-		UserID:    pgtype.UUID{}, // Parse from req.UserId
+		MessageID: convertUUID(req.MessageId),
+		UserID:    convertUUID(req.UserId),
 	}
 
 	if err := s.chatRepo.LikeMessage(ctx, params); err != nil {
@@ -127,8 +124,8 @@ func (s *chatService) UnlikeMessage(ctx context.Context, req *pb.UnlikeMessageRe
 	}
 
 	params := &sqlc.UnlikeMessageParams{
-		MessageID: pgtype.UUID{}, // Parse from req.MessageId
-		UserID:    pgtype.UUID{}, // Parse from req.UserId
+		MessageID: convertUUID(req.MessageId),
+		UserID:    convertUUID(req.UserId),
 	}
 
 	if err := s.chatRepo.UnlikeMessage(ctx, params); err != nil {
@@ -158,8 +155,8 @@ func (s *chatService) StreamEventMessages(req *pb.StreamEventMessagesRequest, st
 
 	// Fetch existing messages
 	params := &sqlc.GetEventMessagesParams{
-		EventID: pgtype.UUID{}, // Parse from req.EventId
-		UserID:  pgtype.UUID{}, // Parse from req.UserId
+		EventID: convertUUID(req.EventId),
+		UserID:  convertUUID(req.UserId),
 	}
 
 	messages, err := s.chatRepo.GetEventMessages(context.Background(), params)
@@ -175,7 +172,6 @@ func (s *chatService) StreamEventMessages(req *pb.StreamEventMessagesRequest, st
 			UserId:        msg.UserID.Bytes[:],
 			Comment:       msg.Comment,
 			Timestamp:     timestamppb.New(msg.Timestamp.Time),
-			MessageIndex:  msg.MessageIndex,
 			NumberOfLikes: int32(msg.NumberOfLikes),
 			IsLikedByUser: msg.IsLikedByUser,
 		}

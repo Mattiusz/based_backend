@@ -61,8 +61,7 @@ CREATE TABLE chat_messages (
     user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     comment TEXT NOT NULL,
     timestamp TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    message_index INTEGER NOT NULL,
-    UNIQUE (event_id, message_index)
+    UNIQUE (event_id, timestamp)
 );
 
 -- Message likes

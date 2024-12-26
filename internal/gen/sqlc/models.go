@@ -154,12 +154,11 @@ func (ns NullGenderType) Value() (driver.Value, error) {
 }
 
 type ChatMessage struct {
-	MessageID    pgtype.UUID        `json:"message_id"`
-	EventID      pgtype.UUID        `json:"event_id"`
-	UserID       pgtype.UUID        `json:"user_id"`
-	Comment      string             `json:"comment"`
-	Timestamp    pgtype.Timestamptz `json:"timestamp"`
-	MessageIndex int32              `json:"message_index"`
+	MessageID pgtype.UUID        `json:"message_id"`
+	EventID   pgtype.UUID        `json:"event_id"`
+	UserID    pgtype.UUID        `json:"user_id"`
+	Comment   string             `json:"comment"`
+	Timestamp pgtype.Timestamptz `json:"timestamp"`
 }
 
 type Event struct {
