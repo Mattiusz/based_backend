@@ -3,10 +3,10 @@ CREATE EXTENSION IF NOT EXISTS postgis;
 
 -- Enum types
 CREATE TYPE gender_type AS ENUM ('male', 'female', 'diverse');
-CREATE TYPE event_status_type AS ENUM ('upcoming', 'ongoing', 'past', 'rescheduled', 'cancelled');
+CREATE TYPE event_status_type AS ENUM ('unspecified', 'upcoming', 'ongoing', 'completed', 'rescheduled', 'cancelled');
 CREATE TYPE event_category_type AS ENUM (
-    'sports', 'musicAndMovies', 'art', 'foodAndDrinks', 'party',
-    'games', 'nature', 'technology', 'travel', 'education', 'charity', 'other'
+    'unspecified', 'sports', 'musicAndMovies', 'art', 'foodAndDrinks', 'partyAndGames',
+    'business', 'nature', 'technology', 'travel', 'education', 'charity', 'other'
 );
 
 -- Users table

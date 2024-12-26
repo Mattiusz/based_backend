@@ -7,6 +7,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/pgx"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mattiusz/based_backend/internal/config"
 )
@@ -22,7 +23,21 @@ func NewDB(ctx context.Context, cfg *config.Config) (*pgxpool.Pool, error) {
 
 	// Set connection pool parameters
 	poolConfig.MaxConns = cfg.MaxPoolConns
-	poolConfig.MaxConnLifetime = cfg.MaxConnLifetimeMins
+	poolConfig.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+		dataTypeNames := []string{
+			"gender_type",
+			"_gender_type",
+			"event_status_type",
+			"_event_status_type",
+			"event_category_type",
+			"_event_category_type", // array type
+		}
+		for _, typeName := range dataTypeNames {
+			dataType, _ := conn.LoadType(ctx, typeName)
+			conn.TypeMap().RegisterType(dataType)
+		}
+		return nil
+	}
 
 	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
 	if err != nil {

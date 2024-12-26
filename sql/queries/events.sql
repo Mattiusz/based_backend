@@ -199,7 +199,6 @@ SELECT $1, $2, u.gender
 FROM users u
 JOIN events e ON e.event_id = $1
 WHERE u.user_id = $2
-AND EXTRACT(YEAR FROM AGE(e.datetime, u.birthday)) BETWEEN e.age_range_min AND e.age_range_max
 AND NOT EXISTS (
     SELECT 1 FROM event_attendees 
     WHERE event_id = $1 AND user_id = $2

@@ -14,12 +14,13 @@ import (
 type EventCategoryType string
 
 const (
+	EventCategoryTypeUnspecified    EventCategoryType = "unspecified"
 	EventCategoryTypeSports         EventCategoryType = "sports"
 	EventCategoryTypeMusicAndMovies EventCategoryType = "musicAndMovies"
 	EventCategoryTypeArt            EventCategoryType = "art"
 	EventCategoryTypeFoodAndDrinks  EventCategoryType = "foodAndDrinks"
-	EventCategoryTypeParty          EventCategoryType = "party"
-	EventCategoryTypeGames          EventCategoryType = "games"
+	EventCategoryTypePartyAndGames  EventCategoryType = "partyAndGames"
+	EventCategoryTypeBusiness       EventCategoryType = "business"
 	EventCategoryTypeNature         EventCategoryType = "nature"
 	EventCategoryTypeTechnology     EventCategoryType = "technology"
 	EventCategoryTypeTravel         EventCategoryType = "travel"
@@ -66,9 +67,10 @@ func (ns NullEventCategoryType) Value() (driver.Value, error) {
 type EventStatusType string
 
 const (
+	EventStatusTypeUnspecified EventStatusType = "unspecified"
 	EventStatusTypeUpcoming    EventStatusType = "upcoming"
 	EventStatusTypeOngoing     EventStatusType = "ongoing"
-	EventStatusTypePast        EventStatusType = "past"
+	EventStatusTypeCompleted   EventStatusType = "completed"
 	EventStatusTypeRescheduled EventStatusType = "rescheduled"
 	EventStatusTypeCancelled   EventStatusType = "cancelled"
 )

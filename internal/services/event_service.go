@@ -3,7 +3,6 @@ package services
 import (
 	"context"
 
-	"github.com/cridenour/go-postgis"
 	"github.com/jackc/pgx/v5/pgtype"
 	pb "github.com/mattiusz/based_backend/internal/gen/proto"
 	"github.com/mattiusz/based_backend/internal/gen/sqlc"
@@ -32,7 +31,7 @@ func (s *eventService) CreateEvent(ctx context.Context, req *pb.CreateEventReque
 
 	categories := make([]sqlc.EventCategoryType, len(req.Categories))
 	for i, category := range req.Categories {
-		categories[i] = sqlc.EventCategoryType(category.String())
+		categories[i] = convertPBCategoryToSQL(category)
 	}
 
 	params := &sqlc.CreateEventParams{
@@ -43,14 +42,15 @@ func (s *eventService) CreateEvent(ctx context.Context, req *pb.CreateEventReque
 		Datetime:      pgtype.Timestamptz{Time: req.Datetime.AsTime(), Valid: true},
 		MaxAttendees:  req.MaxAttendees,
 		Status:        sqlc.EventStatusTypeUpcoming,
-		//Categories:    categories,
-		Venue:        pgtype.Text{String: req.Venue, Valid: true},
-		Description:  pgtype.Text{String: req.Description, Valid: true},
-		AgeRangeMin:  pgtype.Int4{Int32: req.AgeRangeMin, Valid: true},
-		AgeRangeMax:  pgtype.Int4{Int32: req.AgeRangeMax, Valid: true},
-		AllowFemale:  req.AllowFemale,
-		AllowMale:    req.AllowMale,
-		AllowDiverse: req.AllowDiverse,
+		Thumbnail:     req.Thumbnail,
+		Categories:    categories,
+		Venue:         pgtype.Text{String: req.Venue, Valid: true},
+		Description:   pgtype.Text{String: req.Description, Valid: true},
+		AgeRangeMin:   pgtype.Int4{Int32: req.AgeRangeMin, Valid: true},
+		AgeRangeMax:   pgtype.Int4{Int32: req.AgeRangeMax, Valid: true},
+		AllowFemale:   req.AllowFemale,
+		AllowMale:     req.AllowMale,
+		AllowDiverse:  req.AllowDiverse,
 	}
 
 	created_event, err := s.eventRepo.CreateEvent(ctx, params)
@@ -118,7 +118,7 @@ func (s *eventService) GetUserEvents(ctx context.Context, req *pb.GetUserEventsR
 	events, err := s.eventRepo.GetUserEvents(ctx,
 		&sqlc.GetUserEventsParams{
 			UserID: userID,
-			Limit:  500,
+			Limit:  req.Limit,
 		})
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to get user events: %v", err)
@@ -127,9 +127,9 @@ func (s *eventService) GetUserEvents(ctx context.Context, req *pb.GetUserEventsR
 	response := &pb.GetUserEventsResponse{
 		Events: make([]*pb.Event, len(events)),
 	}
-	//for i, event := range events {
-	//	response.Events[i] = convertCreateEventResponseToEvent(event)
-	//}
+	for i, event := range events {
+		response.Events[i] = convertGetUserEventResponseToEvent(&event)
+	}
 
 	return response, nil
 }
@@ -208,9 +208,15 @@ func validateCreateEventRequest(req *pb.CreateEventRequest) error {
 }
 
 func convertCreateEventResponseToEvent(event *sqlc.CreateEventRow) *pb.Event {
+	categories := make([]string, len(event.Categories))
+	for i, category := range event.Categories {
+		categories[i] = convertSQLCategoryToPB(category).String()
+	}
+
 	return &pb.Event{
 		EventId:   event.EventID.Bytes[:],
 		CreatorId: event.CreatorID.Bytes[:],
+		CreatedAt: timestamppb.New(event.CreatedAt.Time),
 		Name:      event.Name,
 		Location: &pb.Location{
 			Latitude:  event.Latitude.(float64),
@@ -221,19 +227,56 @@ func convertCreateEventResponseToEvent(event *sqlc.CreateEventRow) *pb.Event {
 		Venue:             &event.Venue.String,
 		Description:       &event.Description.String,
 		Thumbnail:         event.Thumbnail,
-		Status:            pb.STATUS(pb.STATUS_value[string(event.Status)]),
+		Status:            convertSQLStatusToPB(event.Status),
 		AgeRangeMin:       event.AgeRangeMin.Int32,
 		AgeRangeMax:       event.AgeRangeMax.Int32,
 		AllowFemale:       event.AllowFemale,
 		AllowMale:         event.AllowMale,
 		AllowDiverse:      event.AllowDiverse,
-		Categories:        convertCategoriesToStrings(event.Categories),
+		Categories:        categories,
 		NumberOfComments:  0, // New event has no comments
 		NumberOfAttendees: 1, // Creator is the first attendee
 	}
 }
 
+func convertGetUserEventResponseToEvent(event *sqlc.GetUserEventsRow) *pb.Event {
+	categories := make([]string, len(event.Categories))
+	for i, category := range event.Categories {
+		categories[i] = convertSQLCategoryToPB(category).String()
+	}
+
+	return &pb.Event{
+		EventId:   event.EventID.Bytes[:],
+		CreatorId: event.CreatorID.Bytes[:],
+		CreatedAt: timestamppb.New(event.CreatedAt.Time),
+		Name:      event.Name,
+		Location: &pb.Location{
+			Latitude:  event.Latitude.(float64),
+			Longitude: event.Longitude.(float64),
+		},
+		Datetime:          timestamppb.New(event.Datetime.Time),
+		MaxAttendees:      event.MaxAttendees,
+		Venue:             &event.Venue.String,
+		Description:       &event.Description.String,
+		Thumbnail:         event.Thumbnail,
+		Status:            convertSQLStatusToPB(event.Status),
+		AgeRangeMin:       event.AgeRangeMin.Int32,
+		AgeRangeMax:       event.AgeRangeMax.Int32,
+		AllowFemale:       event.AllowFemale,
+		AllowMale:         event.AllowMale,
+		AllowDiverse:      event.AllowDiverse,
+		Categories:        categories,
+		NumberOfComments:  0,
+		NumberOfAttendees: event.NumberOfAttendees,
+	}
+}
+
 func convertGetEventByIdResponseToEvent(event sqlc.GetEventByIDRow) *pb.Event {
+	categories := make([]string, len(event.Categories))
+	for i, category := range event.Categories {
+		categories[i] = convertSQLCategoryToPB(category).String()
+	}
+
 	return &pb.Event{
 		EventId:   event.EventID.Bytes[:],
 		CreatorId: event.CreatorID.Bytes[:],
@@ -247,13 +290,13 @@ func convertGetEventByIdResponseToEvent(event sqlc.GetEventByIDRow) *pb.Event {
 		Venue:             &event.Venue.String,
 		Description:       &event.Description.String,
 		Thumbnail:         event.Thumbnail,
-		Status:            pb.STATUS(pb.STATUS_value[string(event.Status)]),
+		Status:            convertSQLStatusToPB(event.Status),
 		AgeRangeMin:       event.AgeRangeMin.Int32,
 		AgeRangeMax:       event.AgeRangeMax.Int32,
 		AllowFemale:       event.AllowFemale,
 		AllowMale:         event.AllowMale,
 		AllowDiverse:      event.AllowDiverse,
-		Categories:        convertCategoriesToStrings(event.Categories),
+		Categories:        categories,
 		NumberOfComments:  event.NumberOfComments,
 		NumberOfAttendees: event.NumberOfAttendees,
 	}
@@ -265,6 +308,11 @@ func convertNearbyEventsToProto(events []sqlc.GetNearbyEventsByStatusAndGenderRo
 	}
 
 	for i, event := range events {
+		categories := make([]string, len(event.Categories))
+		for i, category := range event.Categories {
+			categories[i] = convertSQLCategoryToPB(category).String()
+		}
+
 		response.Events[i] = &pb.EventWithDistance{
 			Event: &pb.Event{
 				EventId:   event.EventID.Bytes[:],
@@ -277,7 +325,7 @@ func convertNearbyEventsToProto(events []sqlc.GetNearbyEventsByStatusAndGenderRo
 				Datetime:          timestamppb.New(event.Datetime.Time),
 				MaxAttendees:      event.MaxAttendees,
 				Venue:             &event.Venue.String,
-				Status:            pb.STATUS(pb.STATUS_value[string(event.Status)]),
+				Status:            convertSQLStatusToPB(event.Status),
 				AgeRangeMin:       event.AgeRangeMin.Int32,
 				AgeRangeMax:       event.AgeRangeMax.Int32,
 				AllowFemale:       event.AllowFemale,
@@ -285,7 +333,7 @@ func convertNearbyEventsToProto(events []sqlc.GetNearbyEventsByStatusAndGenderRo
 				AllowDiverse:      event.AllowDiverse,
 				CreatedAt:         timestamppb.New(event.CreatedAt.Time),
 				NumberOfAttendees: event.NumberOfAttendees,
-				Categories:        convertCategoriesToStrings(event.Categories),
+				Categories:        categories,
 			},
 			DistanceMeters: event.DistanceMeters.(float64),
 		}
@@ -294,23 +342,104 @@ func convertNearbyEventsToProto(events []sqlc.GetNearbyEventsByStatusAndGenderRo
 	return response
 }
 
-func convertLocationToPoint(location *pb.Location) postgis.Point {
-	return postgis.Point{
-		X: location.Longitude,
-		Y: location.Latitude,
-	}
-}
-
 func convertUUID(uuid []byte) pgtype.UUID {
 	var bytes [16]byte
 	copy(bytes[:], uuid)
 	return pgtype.UUID{Bytes: bytes, Valid: true}
 }
 
-func convertCategoriesToStrings(categories []sqlc.EventCategoryType) []string {
-	result := make([]string, len(categories))
-	for i, cat := range categories {
-		result[i] = string(cat)
+func convertPBCategoryToSQL(category pb.CATEGORY) sqlc.EventCategoryType {
+	switch category {
+	case pb.CATEGORY_EVENT_CATEGORY_ART:
+		return sqlc.EventCategoryTypeArt
+	case pb.CATEGORY_EVENT_CATEGORY_SPORTS:
+		return sqlc.EventCategoryTypeSports
+	case pb.CATEGORY_EVENT_CATEGORY_MUSIC_AND_MOVIES:
+		return sqlc.EventCategoryTypeMusicAndMovies
+	case pb.CATEGORY_EVENT_CATEGORY_FOOD_AND_DRINKS:
+		return sqlc.EventCategoryTypeFoodAndDrinks
+	case pb.CATEGORY_EVENT_CATEGORY_PARTY_AND_GAMES:
+		return sqlc.EventCategoryTypePartyAndGames
+	case pb.CATEGORY_EVENT_CATEGORY_BUSINESS:
+		return sqlc.EventCategoryTypeBusiness
+	case pb.CATEGORY_EVENT_CATEGORY_NATURE:
+		return sqlc.EventCategoryTypeNature
+	case pb.CATEGORY_EVENT_CATEGORY_TECHNOLOGY:
+		return sqlc.EventCategoryTypeTechnology
+	case pb.CATEGORY_EVENT_CATEGORY_TRAVEL:
+		return sqlc.EventCategoryTypeTravel
+	case pb.CATEGORY_EVENT_CATEGORY_EDUCATION:
+		return sqlc.EventCategoryTypeEducation
+	case pb.CATEGORY_EVENT_CATEGORY_CHARITY:
+		return sqlc.EventCategoryTypeCharity
+	case pb.CATEGORY_EVENT_CATEGORY_OTHER:
+		return sqlc.EventCategoryTypeOther
+	default:
+		return sqlc.EventCategoryTypeUnspecified
 	}
-	return result
+}
+
+func convertSQLCategoryToPB(category sqlc.EventCategoryType) pb.CATEGORY {
+	switch category {
+	case sqlc.EventCategoryTypeArt:
+		return pb.CATEGORY_EVENT_CATEGORY_ART
+	case sqlc.EventCategoryTypeSports:
+		return pb.CATEGORY_EVENT_CATEGORY_SPORTS
+	case sqlc.EventCategoryTypeMusicAndMovies:
+		return pb.CATEGORY_EVENT_CATEGORY_MUSIC_AND_MOVIES
+	case sqlc.EventCategoryTypeFoodAndDrinks:
+		return pb.CATEGORY_EVENT_CATEGORY_FOOD_AND_DRINKS
+	case sqlc.EventCategoryTypePartyAndGames:
+		return pb.CATEGORY_EVENT_CATEGORY_PARTY_AND_GAMES
+	case sqlc.EventCategoryTypeBusiness:
+		return pb.CATEGORY_EVENT_CATEGORY_BUSINESS
+	case sqlc.EventCategoryTypeNature:
+		return pb.CATEGORY_EVENT_CATEGORY_NATURE
+	case sqlc.EventCategoryTypeTechnology:
+		return pb.CATEGORY_EVENT_CATEGORY_TECHNOLOGY
+	case sqlc.EventCategoryTypeTravel:
+		return pb.CATEGORY_EVENT_CATEGORY_TRAVEL
+	case sqlc.EventCategoryTypeEducation:
+		return pb.CATEGORY_EVENT_CATEGORY_EDUCATION
+	case sqlc.EventCategoryTypeCharity:
+		return pb.CATEGORY_EVENT_CATEGORY_CHARITY
+	case sqlc.EventCategoryTypeOther:
+		return pb.CATEGORY_EVENT_CATEGORY_OTHER
+	default:
+		return pb.CATEGORY_EVENT_CATEGORY_UNSPECIFIED
+	}
+}
+
+func convertPbStatusToSQL(status pb.STATUS) sqlc.EventStatusType {
+	switch status {
+	case pb.STATUS_EVENT_STATUS_UPCOMING:
+		return sqlc.EventStatusTypeUpcoming
+	case pb.STATUS_EVENT_STATUS_ONGOING:
+		return sqlc.EventStatusTypeOngoing
+	case pb.STATUS_EVENT_STATUS_CANCELLED:
+		return sqlc.EventStatusTypeCancelled
+	case pb.STATUS_EVENT_STATUS_COMPLETED:
+		return sqlc.EventStatusTypeCompleted
+	case pb.STATUS_EVENT_STATUS_RESCHEDULED:
+		return sqlc.EventStatusTypeRescheduled
+	default:
+		return sqlc.EventStatusTypeUnspecified
+	}
+}
+
+func convertSQLStatusToPB(status sqlc.EventStatusType) pb.STATUS {
+	switch status {
+	case sqlc.EventStatusTypeUpcoming:
+		return pb.STATUS_EVENT_STATUS_UPCOMING
+	case sqlc.EventStatusTypeOngoing:
+		return pb.STATUS_EVENT_STATUS_ONGOING
+	case sqlc.EventStatusTypeCancelled:
+		return pb.STATUS_EVENT_STATUS_CANCELLED
+	case sqlc.EventStatusTypeCompleted:
+		return pb.STATUS_EVENT_STATUS_COMPLETED
+	case sqlc.EventStatusTypeRescheduled:
+		return pb.STATUS_EVENT_STATUS_RESCHEDULED
+	default:
+		return pb.STATUS_EVENT_STATUS_UNSPECIFIED
+	}
 }

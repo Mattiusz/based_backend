@@ -64,18 +64,23 @@ enum STATUS {
   EVENT_STATUS_ONGOING = 2;
   EVENT_STATUS_COMPLETED = 3;
   EVENT_STATUS_CANCELLED = 4;
+  EVENT_STATUS_RESCHEDULED = 5;
 }
 
 enum CATEGORY {
   EVENT_CATEGORY_UNSPECIFIED = 0;
   EVENT_CATEGORY_SPORTS = 1;
-  EVENT_CATEGORY_MUSIC = 2;
-  EVENT_CATEGORY_FOOD = 3;
-  EVENT_CATEGORY_ARTS = 4;
-  EVENT_CATEGORY_EDUCATION = 5;
-  EVENT_CATEGORY_SOCIAL = 6;
-  EVENT_CATEGORY_BUSINESS = 7;
-  EVENT_CATEGORY_OTHER = 8;
+  EVENT_CATEGORY_MUSIC_AND_MOVIES = 2;
+  EVENT_CATEGORY_ART = 3;
+  EVENT_CATEGORY_FOOD_AND_DRINKS = 4;
+  EVENT_CATEGORY_PARTY_AND_GAMES = 5;
+  EVENT_CATEGORY_BUSINESS = 6;
+  EVENT_CATEGORY_NATURE = 7;
+  EVENT_CATEGORY_TECHNOLOGY = 8;
+  EVENT_CATEGORY_TRAVEL = 9;
+  EVENT_CATEGORY_EDUCATION = 10;
+  EVENT_CATEGORY_CHARITY = 11;
+  EVENT_CATEGORY_OTHER = 12;
 }
 
 message CreateEventRequest {
@@ -93,6 +98,7 @@ message CreateEventRequest {
   bool allow_female = 12;
   bool allow_male = 13;
   bool allow_diverse = 14;
+  bytes thumbnail = 15;
 }
 
 message GetEventByIDRequest {
@@ -118,6 +124,7 @@ message EventWithDistance {
 
 message GetUserEventsRequest {
   bytes user_id = 1;
+  int32 limit = 2;
 }
 
 message GetUserEventsResponse {
