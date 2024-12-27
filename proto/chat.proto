@@ -54,6 +54,7 @@ message UnlikeMessageRequest {
 message DeleteMessageRequest {
   bytes message_id = 1;
   bytes user_id = 2;
+  bytes event_id = 3;
 }
 
 message StreamMessagesRequest {
