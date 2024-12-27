@@ -59,7 +59,7 @@ func (s *chatService) CreateMessage(ctx context.Context, req *pb.CreateMessageRe
 		MessageId: msg.MessageID.Bytes[:],
 		EventId:   msg.EventID.Bytes[:],
 		UserId:    msg.UserID.Bytes[:],
-		Message:   msg.Message,
+		Message:   &msg.Message,
 		Timestamp: timestamppb.New(msg.Timestamp.Time),
 	}
 
@@ -87,14 +87,15 @@ func (s *chatService) GetEventMessages(ctx context.Context, req *pb.GetMessagesR
 	}
 
 	for i, msg := range messages {
+		numberOfLikes := int32(msg.NumberOfLikes)
 		response.Messages[i] = &pb.Message{
 			MessageId:     msg.MessageID.Bytes[:],
 			EventId:       msg.EventID.Bytes[:],
 			UserId:        msg.UserID.Bytes[:],
-			Message:       msg.Message,
+			Message:       &msg.Message,
 			Timestamp:     timestamppb.New(msg.Timestamp.Time),
-			NumberOfLikes: int32(msg.NumberOfLikes),
-			IsLikedByUser: msg.IsLikedByUser,
+			NumberOfLikes: &numberOfLikes,
+			IsLikedByUser: &msg.IsLikedByUser,
 		}
 	}
 
@@ -183,14 +184,15 @@ func (s *chatService) StreamEventMessages(req *pb.StreamMessagesRequest, stream 
 
 	// Send existing messages
 	for _, msg := range messages {
+		numberOfLikes := int32(msg.NumberOfLikes)
 		pbMsg := &pb.Message{
 			MessageId:     msg.MessageID.Bytes[:],
 			EventId:       msg.EventID.Bytes[:],
 			UserId:        msg.UserID.Bytes[:],
-			Message:       msg.Message,
+			Message:       &msg.Message,
 			Timestamp:     timestamppb.New(msg.Timestamp.Time),
-			NumberOfLikes: int32(msg.NumberOfLikes),
-			IsLikedByUser: msg.IsLikedByUser,
+			NumberOfLikes: &numberOfLikes,
+			IsLikedByUser: &msg.IsLikedByUser,
 		}
 		if err := stream.Send(pbMsg); err != nil {
 			return status.Errorf(codes.Internal, "failed to send message: %v", err)
