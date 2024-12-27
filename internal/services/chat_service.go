@@ -59,15 +59,15 @@ func (s *chatService) CreateMessage(ctx context.Context, req *pb.CreateMessageRe
 		MessageId: msg.MessageID.Bytes[:],
 		EventId:   msg.EventID.Bytes[:],
 		UserId:    msg.UserID.Bytes[:],
-		Message:   &msg.Message,
 		Timestamp: timestamppb.New(msg.Timestamp.Time),
+		Message:   msg.Message,
 	}
 
 	s.broadcastMessage(pb_msg)
 	return pb_msg, nil
 }
 
-func (s *chatService) GetEventMessages(ctx context.Context, req *pb.GetMessagesRequest) (*pb.GetMessagesResponse, error) {
+func (s *chatService) GetMessages(ctx context.Context, req *pb.GetMessagesRequest) (*pb.GetMessagesResponse, error) {
 	if len(req.EventId) == 0 || len(req.UserId) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "event_id and user_id are required")
 	}
@@ -92,10 +92,10 @@ func (s *chatService) GetEventMessages(ctx context.Context, req *pb.GetMessagesR
 			MessageId:     msg.MessageID.Bytes[:],
 			EventId:       msg.EventID.Bytes[:],
 			UserId:        msg.UserID.Bytes[:],
-			Message:       &msg.Message,
+			Message:       msg.Message,
 			Timestamp:     timestamppb.New(msg.Timestamp.Time),
-			NumberOfLikes: &numberOfLikes,
-			IsLikedByUser: &msg.IsLikedByUser,
+			NumberOfLikes: numberOfLikes,
+			IsLikedByUser: msg.IsLikedByUser,
 		}
 	}
 
@@ -153,7 +153,7 @@ func (s *chatService) DeleteMesssage(ctx context.Context, req *pb.DeleteMessageR
 	return &emptypb.Empty{}, nil
 }
 
-func (s *chatService) StreamEventMessages(req *pb.StreamMessagesRequest, stream pb.ChatService_StreamMessagesServer) error {
+func (s *chatService) StreamMessages(req *pb.StreamMessagesRequest, stream pb.ChatService_StreamMessagesServer) error {
 	if len(req.EventId) == 0 || len(req.UserId) == 0 {
 		return status.Error(codes.InvalidArgument, "event_id and user_id are required")
 	}
@@ -189,10 +189,10 @@ func (s *chatService) StreamEventMessages(req *pb.StreamMessagesRequest, stream 
 			MessageId:     msg.MessageID.Bytes[:],
 			EventId:       msg.EventID.Bytes[:],
 			UserId:        msg.UserID.Bytes[:],
-			Message:       &msg.Message,
+			Message:       msg.Message,
 			Timestamp:     timestamppb.New(msg.Timestamp.Time),
-			NumberOfLikes: &numberOfLikes,
-			IsLikedByUser: &msg.IsLikedByUser,
+			NumberOfLikes: numberOfLikes,
+			IsLikedByUser: msg.IsLikedByUser,
 		}
 		if err := stream.Send(pbMsg); err != nil {
 			return status.Errorf(codes.Internal, "failed to send message: %v", err)
