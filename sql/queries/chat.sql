@@ -26,3 +26,9 @@ ON CONFLICT DO NOTHING;
 -- name: UnlikeMessage :exec
 DELETE FROM message_likes
 WHERE message_id = $1 AND user_id = $2;
+
+-- name: DeleteChatMessage :exec
+-- Note: This will cascade delete all message likes
+DELETE FROM chat_messages
+WHERE message_id = $1
+AND user_id = $2; -- Optional author check for security

@@ -12,6 +12,7 @@ type ChatRepository interface {
 	GetEventMessages(ctx context.Context, params *sqlc.GetEventMessagesParams) ([]sqlc.GetEventMessagesRow, error)
 	LikeMessage(ctx context.Context, params *sqlc.LikeMessageParams) error
 	UnlikeMessage(ctx context.Context, params *sqlc.UnlikeMessageParams) error
+	DeleteMesssage(ctx context.Context, params *sqlc.DeleteChatMessageParams) error
 }
 
 type chatRepository struct {
@@ -44,4 +45,8 @@ func (r *chatRepository) LikeMessage(ctx context.Context, params *sqlc.LikeMessa
 
 func (r *chatRepository) UnlikeMessage(ctx context.Context, params *sqlc.UnlikeMessageParams) error {
 	return r.queries.UnlikeMessage(ctx, *params)
+}
+
+func (r *chatRepository) DeleteMesssage(ctx context.Context, params *sqlc.DeleteChatMessageParams) error {
+	return r.queries.DeleteChatMessage(ctx, *params)
 }

@@ -2,14 +2,16 @@ syntax = "proto3";
 
 package api.v1;
 
+import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/mattiusz/based_backend/internal/gen/proto/v1";
 
 service UserService {
-  rpc CreateUser(CreateUserRequest) returns (User) {}
-  rpc UpdateUser(UpdateUserRequest) returns (User) {}
-  rpc GetUser(GetUserRequest) returns (User) {}
+  rpc CreateUser(CreateUserRequest) returns (User);
+  rpc UpdateUser(UpdateUserRequest) returns (User);
+  rpc GetUser(GetUserRequest) returns (User);
+  rpc DeleteUser(DeleteUserRequest) returns (google.protobuf.Empty);
 }
 
 enum GENDER {
@@ -39,5 +41,9 @@ message UpdateUserRequest {
 }
 
 message GetUserRequest {
+  bytes user_id = 1;
+}
+
+message DeleteUserRequest {
   bytes user_id = 1;
 }

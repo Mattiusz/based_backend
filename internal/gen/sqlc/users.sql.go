@@ -37,6 +37,17 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 	return i, err
 }
 
+const deleteUser = `-- name: DeleteUser :exec
+DELETE FROM users
+WHERE user_id = $1
+`
+
+// Note: This will cascade delete all user's events, attendances, messages, and likes
+func (q *Queries) DeleteUser(ctx context.Context, userID pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, deleteUser, userID)
+	return err
+}
+
 const getUserByID = `-- name: GetUserByID :one
 SELECT user_id, name, birthday, gender, created_at, updated_at FROM users WHERE user_id = $1
 `

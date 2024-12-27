@@ -36,6 +36,23 @@ func (q *Queries) CreateChatMessage(ctx context.Context, arg CreateChatMessagePa
 	return i, err
 }
 
+const deleteChatMessage = `-- name: DeleteChatMessage :exec
+DELETE FROM chat_messages
+WHERE message_id = $1
+AND user_id = $2
+`
+
+type DeleteChatMessageParams struct {
+	MessageID pgtype.UUID `json:"message_id"`
+	UserID    pgtype.UUID `json:"user_id"`
+}
+
+// Note: This will cascade delete all message likes
+func (q *Queries) DeleteChatMessage(ctx context.Context, arg DeleteChatMessageParams) error {
+	_, err := q.db.Exec(ctx, deleteChatMessage, arg.MessageID, arg.UserID)
+	return err
+}
+
 const getEventMessages = `-- name: GetEventMessages :many
 SELECT 
     cm.message_id, cm.event_id, cm.user_id, cm.message, cm.timestamp,

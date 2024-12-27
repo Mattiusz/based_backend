@@ -16,6 +16,7 @@ service EventService {
   rpc JoinEvent(JoinEventRequest) returns (google.protobuf.Empty);
   rpc LeaveEvent(LeaveEventRequest) returns (google.protobuf.Empty);
   rpc UpdateEvent(UpdateEventRequest) returns (Event);
+  rpc DeleteEvent(DeleteEventRequest) returns (google.protobuf.Empty);
   rpc GetEventAttendeeStats(GetEventAttendeeStatsRequest) returns (EventAttendeeStats);
 }
 
@@ -144,6 +145,11 @@ message LeaveEventRequest {
 message UpdateEventRequest {
   bytes event_id = 1;
   STATUS status = 2;
+}
+
+message DeleteEventRequest {
+  bytes event_id = 1;
+  bytes user_id = 2;
 }
 
 message GetEventAttendeeStatsRequest {

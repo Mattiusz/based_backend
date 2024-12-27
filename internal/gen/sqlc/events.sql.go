@@ -131,6 +131,23 @@ func (q *Queries) CreateEvent(ctx context.Context, arg CreateEventParams) (Creat
 	return i, err
 }
 
+const deleteEvent = `-- name: DeleteEvent :exec
+DELETE FROM events
+WHERE event_id = $1
+AND creator_id = $2
+`
+
+type DeleteEventParams struct {
+	EventID   pgtype.UUID `json:"event_id"`
+	CreatorID pgtype.UUID `json:"creator_id"`
+}
+
+// Note: This will cascade delete all event attendances, messages, and likes
+func (q *Queries) DeleteEvent(ctx context.Context, arg DeleteEventParams) error {
+	_, err := q.db.Exec(ctx, deleteEvent, arg.EventID, arg.CreatorID)
+	return err
+}
+
 const getEventAttendeeStats = `-- name: GetEventAttendeeStats :one
 SELECT 
     COUNT(CASE WHEN gender = 'female' THEN 1 END) as female_count,

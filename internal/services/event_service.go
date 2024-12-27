@@ -161,6 +161,23 @@ func (s *eventService) LeaveEvent(ctx context.Context, req *pb.LeaveEventRequest
 	return &emptypb.Empty{}, nil
 }
 
+func (s *eventService) DeleteEvent(ctx context.Context, req *pb.DeleteEventRequest) (*emptypb.Empty, error) {
+	if len(req.EventId) == 0 || len(req.UserId) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "event_id and user_id are required")
+	}
+
+	params := &sqlc.DeleteEventParams{
+		EventID:   convertUUID(req.EventId),
+		CreatorID: convertUUID(req.UserId),
+	}
+
+	if err := s.eventRepo.DeleteEvent(ctx, params); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to delete event: %v", err)
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
 func (s *eventService) GetEventAttendeeStats(ctx context.Context, req *pb.GetEventAttendeeStatsRequest) (*pb.EventAttendeeStats, error) {
 	if len(req.EventId) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "event_id is required")

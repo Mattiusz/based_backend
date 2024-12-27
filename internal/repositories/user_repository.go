@@ -11,6 +11,7 @@ type UserRepository interface {
 	CreateUser(ctx context.Context, req *sqlc.CreateUserParams) (*sqlc.User, error)
 	UpdateUser(ctx context.Context, req *sqlc.UpdateUserParams) (*sqlc.User, error)
 	GetUserByID(ctx context.Context, userID pgtype.UUID) (*sqlc.User, error)
+	DeleteUser(ctx context.Context, userID pgtype.UUID) error
 }
 
 type repository struct {
@@ -46,4 +47,8 @@ func (r *repository) GetUserByID(ctx context.Context, userID pgtype.UUID) (*sqlc
 	}
 
 	return &user, nil
+}
+
+func (r *repository) DeleteUser(ctx context.Context, userID pgtype.UUID) error {
+	return r.queries.DeleteUser(ctx, userID)
 }

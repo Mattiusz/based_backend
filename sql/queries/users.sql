@@ -14,3 +14,8 @@ RETURNING *;
 
 -- name: GetUserByID :one
 SELECT * FROM users WHERE user_id = $1;
+
+-- name: DeleteUser :exec
+-- Note: This will cascade delete all user's events, attendances, messages, and likes
+DELETE FROM users
+WHERE user_id = $1;

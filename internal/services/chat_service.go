@@ -25,7 +25,7 @@ type chatService struct {
 type subscriber struct {
 	eventID   []byte
 	userID    []byte
-	messages  chan *pb.ChatMessage
+	messages  chan *pb.Message
 	done      chan struct{}
 	createdAt time.Time
 }
@@ -39,7 +39,7 @@ func NewChatService(repo repositories.ChatRepository) pb.ChatServiceServer {
 	return service
 }
 
-func (s *chatService) CreateMessage(ctx context.Context, req *pb.CreateMessageRequest) (*pb.ChatMessage, error) {
+func (s *chatService) CreateMessage(ctx context.Context, req *pb.CreateMessageRequest) (*pb.Message, error) {
 	if len(req.EventId) == 0 || len(req.UserId) == 0 || req.Message == "" {
 		return nil, status.Error(codes.InvalidArgument, "event_id, user_id, and comment are required")
 	}
@@ -55,7 +55,7 @@ func (s *chatService) CreateMessage(ctx context.Context, req *pb.CreateMessageRe
 		return nil, status.Errorf(codes.Internal, "failed to create message: %v", err)
 	}
 
-	pb_msg := &pb.ChatMessage{
+	pb_msg := &pb.Message{
 		MessageId: msg.MessageID.Bytes[:],
 		EventId:   msg.EventID.Bytes[:],
 		UserId:    msg.UserID.Bytes[:],
@@ -67,7 +67,7 @@ func (s *chatService) CreateMessage(ctx context.Context, req *pb.CreateMessageRe
 	return pb_msg, nil
 }
 
-func (s *chatService) GetEventMessages(ctx context.Context, req *pb.GetEventMessagesRequest) (*pb.GetEventMessagesResponse, error) {
+func (s *chatService) GetEventMessages(ctx context.Context, req *pb.GetMessagesRequest) (*pb.GetMessagesResponse, error) {
 	if len(req.EventId) == 0 || len(req.UserId) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "event_id and user_id are required")
 	}
@@ -82,12 +82,12 @@ func (s *chatService) GetEventMessages(ctx context.Context, req *pb.GetEventMess
 		return nil, status.Errorf(codes.Internal, "failed to get messages: %v", err)
 	}
 
-	response := &pb.GetEventMessagesResponse{
-		Messages: make([]*pb.ChatMessage, len(messages)),
+	response := &pb.GetMessagesResponse{
+		Messages: make([]*pb.Message, len(messages)),
 	}
 
 	for i, msg := range messages {
-		response.Messages[i] = &pb.ChatMessage{
+		response.Messages[i] = &pb.Message{
 			MessageId:     msg.MessageID.Bytes[:],
 			EventId:       msg.EventID.Bytes[:],
 			UserId:        msg.UserID.Bytes[:],
@@ -135,7 +135,24 @@ func (s *chatService) UnlikeMessage(ctx context.Context, req *pb.UnlikeMessageRe
 	return &emptypb.Empty{}, nil
 }
 
-func (s *chatService) StreamEventMessages(req *pb.StreamEventMessagesRequest, stream pb.ChatService_StreamEventMessagesServer) error {
+func (s *chatService) DeleteMesssage(ctx context.Context, req *pb.DeleteMessageRequest) (*emptypb.Empty, error) {
+	if len(req.MessageId) == 0 || len(req.UserId) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "message_id and user_id are required")
+	}
+
+	params := &sqlc.DeleteChatMessageParams{
+		MessageID: convertUUID(req.MessageId),
+		UserID:    convertUUID(req.UserId),
+	}
+
+	if err := s.chatRepo.DeleteMesssage(ctx, params); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to delete message: %v", err)
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (s *chatService) StreamEventMessages(req *pb.StreamMessagesRequest, stream pb.ChatService_StreamMessagesServer) error {
 	if len(req.EventId) == 0 || len(req.UserId) == 0 {
 		return status.Error(codes.InvalidArgument, "event_id and user_id are required")
 	}
@@ -144,7 +161,7 @@ func (s *chatService) StreamEventMessages(req *pb.StreamEventMessagesRequest, st
 	sub := &subscriber{
 		eventID:   req.EventId,
 		userID:    req.UserId,
-		messages:  make(chan *pb.ChatMessage, 100), // Buffer size of 100
+		messages:  make(chan *pb.Message, 100), // Buffer size of 100
 		done:      make(chan struct{}),
 		createdAt: time.Now(),
 	}
@@ -166,7 +183,7 @@ func (s *chatService) StreamEventMessages(req *pb.StreamEventMessagesRequest, st
 
 	// Send existing messages
 	for _, msg := range messages {
-		pbMsg := &pb.ChatMessage{
+		pbMsg := &pb.Message{
 			MessageId:     msg.MessageID.Bytes[:],
 			EventId:       msg.EventID.Bytes[:],
 			UserId:        msg.UserID.Bytes[:],
@@ -231,7 +248,7 @@ func (s *chatService) removeSubscriber(eventID []byte, sub *subscriber) {
 	}
 }
 
-func (s *chatService) broadcastMessage(msg *pb.ChatMessage) {
+func (s *chatService) broadcastMessage(msg *pb.Message) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 

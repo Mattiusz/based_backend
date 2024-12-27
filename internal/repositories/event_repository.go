@@ -16,6 +16,7 @@ type EventRepository interface {
 	UpdateEvent(ctx context.Context, params *sqlc.UpdateEventParams) (*sqlc.UpdateEventRow, error)
 	JoinEvent(ctx context.Context, params *sqlc.JoinEventParams) error
 	LeaveEvent(ctx context.Context, params *sqlc.LeaveEventParams) error
+	DeleteEvent(ctx context.Context, params *sqlc.DeleteEventParams) error
 }
 
 type eventRepository struct {
@@ -80,4 +81,8 @@ func (r *eventRepository) JoinEvent(ctx context.Context, params *sqlc.JoinEventP
 
 func (r *eventRepository) LeaveEvent(ctx context.Context, params *sqlc.LeaveEventParams) error {
 	return r.queries.LeaveEvent(ctx, *params)
+}
+
+func (r *eventRepository) DeleteEvent(ctx context.Context, params *sqlc.DeleteEventParams) error {
+	return r.queries.DeleteEvent(ctx, *params)
 }

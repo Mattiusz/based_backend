@@ -8,14 +8,15 @@ import "google/protobuf/empty.proto";
 option go_package = "github.com/mattiusz/based_backend/internal/gen/proto/v1";
 
 service ChatService {
-  rpc CreateMessage(CreateMessageRequest) returns (ChatMessage);
-  rpc GetEventMessages(GetEventMessagesRequest) returns (GetEventMessagesResponse);
+  rpc CreateMessage(CreateMessageRequest) returns (Message);
+  rpc GetMessages(GetMessagesRequest) returns (GetMessagesResponse);
   rpc LikeMessage(LikeMessageRequest) returns (google.protobuf.Empty);
   rpc UnlikeMessage(UnlikeMessageRequest) returns (google.protobuf.Empty);
-  rpc StreamEventMessages(StreamEventMessagesRequest) returns (stream ChatMessage);
+  rpc StreamMessages(StreamMessagesRequest) returns (stream Message);
+  rpc DeleteMessage(DeleteMessageRequest) returns (google.protobuf.Empty);
 }
 
-message ChatMessage {
+message Message {
   bytes message_id = 1;
   bytes event_id = 2;
   bytes user_id = 3;
@@ -31,13 +32,13 @@ message CreateMessageRequest {
   string message = 3;
 }
 
-message GetEventMessagesRequest {
+message GetMessagesRequest {
   bytes event_id = 1;
   bytes user_id = 2;
 }
 
-message GetEventMessagesResponse {
-  repeated ChatMessage messages = 1;
+message GetMessagesResponse {
+  repeated Message messages = 1;
 }
 
 message LikeMessageRequest {
@@ -50,7 +51,12 @@ message UnlikeMessageRequest {
   bytes user_id = 2;
 }
 
-message StreamEventMessagesRequest {
+message DeleteMessageRequest {
+  bytes message_id = 1;
+  bytes user_id = 2;
+}
+
+message StreamMessagesRequest {
   bytes event_id = 1;
   bytes user_id = 2;
 }

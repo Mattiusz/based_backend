@@ -27,6 +27,7 @@ const (
 	EventService_JoinEvent_FullMethodName             = "/api.v1.EventService/JoinEvent"
 	EventService_LeaveEvent_FullMethodName            = "/api.v1.EventService/LeaveEvent"
 	EventService_UpdateEvent_FullMethodName           = "/api.v1.EventService/UpdateEvent"
+	EventService_DeleteEvent_FullMethodName           = "/api.v1.EventService/DeleteEvent"
 	EventService_GetEventAttendeeStats_FullMethodName = "/api.v1.EventService/GetEventAttendeeStats"
 )
 
@@ -41,6 +42,7 @@ type EventServiceClient interface {
 	JoinEvent(ctx context.Context, in *JoinEventRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	LeaveEvent(ctx context.Context, in *LeaveEventRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	UpdateEvent(ctx context.Context, in *UpdateEventRequest, opts ...grpc.CallOption) (*Event, error)
+	DeleteEvent(ctx context.Context, in *DeleteEventRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	GetEventAttendeeStats(ctx context.Context, in *GetEventAttendeeStatsRequest, opts ...grpc.CallOption) (*EventAttendeeStats, error)
 }
 
@@ -122,6 +124,16 @@ func (c *eventServiceClient) UpdateEvent(ctx context.Context, in *UpdateEventReq
 	return out, nil
 }
 
+func (c *eventServiceClient) DeleteEvent(ctx context.Context, in *DeleteEventRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, EventService_DeleteEvent_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *eventServiceClient) GetEventAttendeeStats(ctx context.Context, in *GetEventAttendeeStatsRequest, opts ...grpc.CallOption) (*EventAttendeeStats, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(EventAttendeeStats)
@@ -143,6 +155,7 @@ type EventServiceServer interface {
 	JoinEvent(context.Context, *JoinEventRequest) (*emptypb.Empty, error)
 	LeaveEvent(context.Context, *LeaveEventRequest) (*emptypb.Empty, error)
 	UpdateEvent(context.Context, *UpdateEventRequest) (*Event, error)
+	DeleteEvent(context.Context, *DeleteEventRequest) (*emptypb.Empty, error)
 	GetEventAttendeeStats(context.Context, *GetEventAttendeeStatsRequest) (*EventAttendeeStats, error)
 	mustEmbedUnimplementedEventServiceServer()
 }
@@ -174,6 +187,9 @@ func (UnimplementedEventServiceServer) LeaveEvent(context.Context, *LeaveEventRe
 }
 func (UnimplementedEventServiceServer) UpdateEvent(context.Context, *UpdateEventRequest) (*Event, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateEvent not implemented")
+}
+func (UnimplementedEventServiceServer) DeleteEvent(context.Context, *DeleteEventRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteEvent not implemented")
 }
 func (UnimplementedEventServiceServer) GetEventAttendeeStats(context.Context, *GetEventAttendeeStatsRequest) (*EventAttendeeStats, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetEventAttendeeStats not implemented")
@@ -325,6 +341,24 @@ func _EventService_UpdateEvent_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _EventService_DeleteEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteEventRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(EventServiceServer).DeleteEvent(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: EventService_DeleteEvent_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(EventServiceServer).DeleteEvent(ctx, req.(*DeleteEventRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _EventService_GetEventAttendeeStats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetEventAttendeeStatsRequest)
 	if err := dec(in); err != nil {
@@ -377,6 +411,10 @@ var EventService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateEvent",
 			Handler:    _EventService_UpdateEvent_Handler,
+		},
+		{
+			MethodName: "DeleteEvent",
+			Handler:    _EventService_DeleteEvent_Handler,
 		},
 		{
 			MethodName: "GetEventAttendeeStats",

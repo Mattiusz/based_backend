@@ -217,3 +217,9 @@ AND NOT EXISTS (
 -- name: LeaveEvent :exec
 DELETE FROM event_attendees
 WHERE event_id = $1 AND user_id = $2;
+
+-- name: DeleteEvent :exec
+-- Note: This will cascade delete all event attendances, messages, and likes
+DELETE FROM events
+WHERE event_id = $1
+AND creator_id = $2; -- Optional creator check for security

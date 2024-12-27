@@ -6,6 +6,7 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	pb "github.com/mattiusz/based_backend/internal/gen/proto"
@@ -147,4 +148,21 @@ func (s *userService) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.
 		Birthday:    timestamppb.New(user.Birthday.Time),
 		Gender:      gender,
 	}, nil
+}
+
+func (s *userService) DeleteUser(ctx context.Context, req *pb.DeleteUserRequest) (*emptypb.Empty, error) {
+	if len(req.UserId) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "user_id is required")
+	}
+
+	userID := pgtype.UUID{
+		Bytes: [16]byte(req.UserId),
+		Valid: true,
+	}
+
+	if err := s.userRepo.DeleteUser(ctx, userID); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to delete user: %v", err)
+	}
+
+	return &emptypb.Empty{}, nil
 }
