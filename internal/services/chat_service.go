@@ -202,18 +202,18 @@ func (s *chatService) addSubscriber(eventID []byte, sub *subscriber) {
 	defer s.mu.Unlock()
 
 	var subs []*subscriber
-	if val, ok := s.subscribers.Load(eventID); ok {
+	if val, ok := s.subscribers.Load(string(eventID)); ok {
 		subs = val.([]*subscriber)
 	}
 	subs = append(subs, sub)
-	s.subscribers.Store(eventID, subs)
+	s.subscribers.Store(string(eventID), subs)
 }
 
 func (s *chatService) removeSubscriber(eventID []byte, sub *subscriber) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if val, ok := s.subscribers.Load(eventID); ok {
+	if val, ok := s.subscribers.Load(string(eventID)); ok {
 		subs := val.([]*subscriber)
 		for i, existing := range subs {
 			if existing == sub {
@@ -224,9 +224,9 @@ func (s *chatService) removeSubscriber(eventID []byte, sub *subscriber) {
 			}
 		}
 		if len(subs) == 0 {
-			s.subscribers.Delete(eventID)
+			s.subscribers.Delete(string(eventID))
 		} else {
-			s.subscribers.Store(eventID, subs)
+			s.subscribers.Store(string(eventID), subs)
 		}
 	}
 }
@@ -235,15 +235,9 @@ func (s *chatService) broadcastMessage(msg *pb.ChatMessage) {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
-	val, ok := s.subscribers.Load(string(msg.EventId))
-	if !ok {
-		return // No subscribers, just return
-	}
-
-	subs, ok := val.([]*subscriber)
-	if !ok {
-		// Log error if needed - type assertion failed
-		return
+	var subs []*subscriber
+	if val, ok := s.subscribers.Load(string(msg.EventId)); ok {
+		subs = val.([]*subscriber)
 	}
 
 	for _, sub := range subs {
@@ -264,7 +258,7 @@ func (s *chatService) cleanupInactiveSubscribers() {
 	for range ticker.C {
 		now := time.Now()
 		s.subscribers.Range(func(key, value interface{}) bool {
-			eventID := key.(string)
+			eventID := key.([]byte)
 			subs := value.([]*subscriber)
 
 			var activeSubscribers []*subscriber
@@ -279,9 +273,9 @@ func (s *chatService) cleanupInactiveSubscribers() {
 			}
 
 			if len(activeSubscribers) == 0 {
-				s.subscribers.Delete(eventID)
+				s.subscribers.Delete(string(eventID))
 			} else {
-				s.subscribers.Store(eventID, activeSubscribers)
+				s.subscribers.Store(string(eventID), activeSubscribers)
 			}
 			return true
 		})
