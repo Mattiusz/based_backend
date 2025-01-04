@@ -308,22 +308,22 @@ func (s *chatService) cleanupInactiveSubscribers() {
 	}
 }
 
-func convertPbMessageTypeToSQL(status pb.MessageType) sqlc.MessageType {
+func convertPbMessageTypeToSQL(status pb.MessageType) sqlc.MessageCategoryType {
 	switch status {
 	case pb.MessageType_MESSAGE_TYPE_TEXT:
-		return sqlc.MessageTypeText
+		return sqlc.MessageCategoryTypeText
 	case pb.MessageType_MESSAGE_TYPE_LOCATION:
-		return sqlc.MessageTypeLocation
+		return sqlc.MessageCategoryTypeLocation
 	default:
-		return sqlc.MessageTypeUnspecified
+		return sqlc.MessageCategoryTypeUnspecified
 	}
 }
 
-func convertSQLMessageTypeToPB(status sqlc.MessageType) pb.MessageType {
+func convertSQLMessageTypeToPB(status sqlc.MessageCategoryType) pb.MessageType {
 	switch status {
-	case sqlc.MessageTypeText:
+	case sqlc.MessageCategoryTypeText:
 		return pb.MessageType_MESSAGE_TYPE_TEXT
-	case sqlc.MessageTypeLocation:
+	case sqlc.MessageCategoryTypeLocation:
 		return pb.MessageType_MESSAGE_TYPE_LOCATION
 	default:
 		return pb.MessageType_MESSAGE_TYPE_UNSPECIFIED

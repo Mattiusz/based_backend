@@ -154,6 +154,49 @@ func (ns NullGenderType) Value() (driver.Value, error) {
 	return string(ns.GenderType), nil
 }
 
+type MessageCategoryType string
+
+const (
+	MessageCategoryTypeUnspecified MessageCategoryType = "unspecified"
+	MessageCategoryTypeText        MessageCategoryType = "text"
+	MessageCategoryTypeLocation    MessageCategoryType = "location"
+)
+
+func (e *MessageCategoryType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = MessageCategoryType(s)
+	case string:
+		*e = MessageCategoryType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for MessageCategoryType: %T", src)
+	}
+	return nil
+}
+
+type NullMessageCategoryType struct {
+	MessageCategoryType MessageCategoryType `json:"message_category_type"`
+	Valid               bool                `json:"valid"` // Valid is true if MessageCategoryType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullMessageCategoryType) Scan(value interface{}) error {
+	if value == nil {
+		ns.MessageCategoryType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.MessageCategoryType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullMessageCategoryType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.MessageCategoryType), nil
+}
+
 type MessageStatusType string
 
 const (
@@ -198,58 +241,15 @@ func (ns NullMessageStatusType) Value() (driver.Value, error) {
 	return string(ns.MessageStatusType), nil
 }
 
-type MessageType string
-
-const (
-	MessageTypeUnspecified MessageType = "unspecified"
-	MessageTypeText        MessageType = "text"
-	MessageTypeLocation    MessageType = "location"
-)
-
-func (e *MessageType) Scan(src interface{}) error {
-	switch s := src.(type) {
-	case []byte:
-		*e = MessageType(s)
-	case string:
-		*e = MessageType(s)
-	default:
-		return fmt.Errorf("unsupported scan type for MessageType: %T", src)
-	}
-	return nil
-}
-
-type NullMessageType struct {
-	MessageType MessageType `json:"message_type"`
-	Valid       bool        `json:"valid"` // Valid is true if MessageType is not NULL
-}
-
-// Scan implements the Scanner interface.
-func (ns *NullMessageType) Scan(value interface{}) error {
-	if value == nil {
-		ns.MessageType, ns.Valid = "", false
-		return nil
-	}
-	ns.Valid = true
-	return ns.MessageType.Scan(value)
-}
-
-// Value implements the driver Valuer interface.
-func (ns NullMessageType) Value() (driver.Value, error) {
-	if !ns.Valid {
-		return nil, nil
-	}
-	return string(ns.MessageType), nil
-}
-
 type ChatMessage struct {
-	MessageID pgtype.UUID        `json:"message_id"`
-	EventID   pgtype.UUID        `json:"event_id"`
-	UserID    pgtype.UUID        `json:"user_id"`
-	Content   string             `json:"content"`
-	Type      MessageType        `json:"type"`
-	Status    MessageStatusType  `json:"status"`
-	CreatedAt pgtype.Timestamptz `json:"created_at"`
-	EditedAt  pgtype.Timestamptz `json:"edited_at"`
+	MessageID pgtype.UUID         `json:"message_id"`
+	EventID   pgtype.UUID         `json:"event_id"`
+	UserID    pgtype.UUID         `json:"user_id"`
+	Content   string              `json:"content"`
+	Type      MessageCategoryType `json:"type"`
+	Status    MessageStatusType   `json:"status"`
+	CreatedAt pgtype.Timestamptz  `json:"created_at"`
+	EditedAt  pgtype.Timestamptz  `json:"edited_at"`
 }
 
 type Event struct {

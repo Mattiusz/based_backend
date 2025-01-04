@@ -18,10 +18,10 @@ RETURNING message_id, event_id, user_id, content, type, status, created_at, edit
 `
 
 type CreateChatMessageParams struct {
-	EventID pgtype.UUID `json:"event_id"`
-	UserID  pgtype.UUID `json:"user_id"`
-	Content string      `json:"content"`
-	Type    MessageType `json:"type"`
+	EventID pgtype.UUID         `json:"event_id"`
+	UserID  pgtype.UUID         `json:"user_id"`
+	Content string              `json:"content"`
+	Type    MessageCategoryType `json:"type"`
 }
 
 func (q *Queries) CreateChatMessage(ctx context.Context, arg CreateChatMessageParams) (ChatMessage, error) {
@@ -83,16 +83,16 @@ type GetEventMessagesParams struct {
 }
 
 type GetEventMessagesRow struct {
-	MessageID     pgtype.UUID        `json:"message_id"`
-	EventID       pgtype.UUID        `json:"event_id"`
-	UserID        pgtype.UUID        `json:"user_id"`
-	Content       string             `json:"content"`
-	Type          MessageType        `json:"type"`
-	Status        MessageStatusType  `json:"status"`
-	CreatedAt     pgtype.Timestamptz `json:"created_at"`
-	EditedAt      pgtype.Timestamptz `json:"edited_at"`
-	NumberOfLikes int64              `json:"number_of_likes"`
-	IsLikedByUser bool               `json:"is_liked_by_user"`
+	MessageID     pgtype.UUID         `json:"message_id"`
+	EventID       pgtype.UUID         `json:"event_id"`
+	UserID        pgtype.UUID         `json:"user_id"`
+	Content       string              `json:"content"`
+	Type          MessageCategoryType `json:"type"`
+	Status        MessageStatusType   `json:"status"`
+	CreatedAt     pgtype.Timestamptz  `json:"created_at"`
+	EditedAt      pgtype.Timestamptz  `json:"edited_at"`
+	NumberOfLikes int64               `json:"number_of_likes"`
+	IsLikedByUser bool                `json:"is_liked_by_user"`
 }
 
 func (q *Queries) GetEventMessages(ctx context.Context, arg GetEventMessagesParams) ([]GetEventMessagesRow, error) {

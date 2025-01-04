@@ -31,7 +31,7 @@ CREATE TYPE message_status_type AS ENUM (
     'deleted',
     'edited'
 );
-CREATE TYPE message_type AS ENUM ('unspecified', 'text', 'location');
+CREATE TYPE message_category_type AS ENUM ('unspecified', 'text', 'location');
 -- Users table
 CREATE TABLE users (
     user_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -86,7 +86,7 @@ CREATE TABLE chat_messages (
     event_id UUID NOT NULL REFERENCES events(event_id) ON DELETE CASCADE,
     user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
     content TEXT NOT NULL,
-    type message_type NOT NULL DEFAULT 'text',
+    type message_category_type NOT NULL DEFAULT 'text',
     status message_status_type NOT NULL DEFAULT 'sent',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     edited_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
@@ -108,7 +108,6 @@ CREATE INDEX idx_chat_messages_event ON chat_messages(event_id);
 CREATE INDEX idx_event_attendees_user ON event_attendees(user_id);
 CREATE INDEX idx_event_attendees_event ON event_attendees(event_id);
 CREATE INDEX idx_message_likes_message ON message_likes(message_id);
-CREATE INDEX idx_chat_messages_status ON chat_messages(message_status);
 -- Create spatial indexes for location queries
 CREATE INDEX idx_events_location ON events USING GIST(location);
 -- Create statistics views

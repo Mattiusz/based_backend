@@ -32,17 +32,17 @@ func main() {
 		log.Fatalf("failed to load config: %v", err)
 	}
 
+	// Run migrations
+	if err := db.RunMigrations(ctx, cfg); err != nil {
+		log.Fatalf("failed to run migrations: %v", err)
+	}
+
 	// Initialize database
 	dbPool, err := db.NewDB(ctx, cfg)
 	if err != nil {
 		log.Fatalf("failed to connect to database: %v", err)
 	}
 	defer dbPool.Close()
-
-	// Run migrations
-	if err := db.RunMigrations(ctx, cfg); err != nil {
-		log.Fatalf("failed to run migrations: %v", err)
-	}
 
 	// Initialize queries and repository
 	queries := sqlc.New(dbPool)
