@@ -113,9 +113,10 @@ func (ns NullEventStatusType) Value() (driver.Value, error) {
 type GenderType string
 
 const (
-	GenderTypeMale    GenderType = "male"
-	GenderTypeFemale  GenderType = "female"
-	GenderTypeDiverse GenderType = "diverse"
+	GenderTypeUnspecified GenderType = "unspecified"
+	GenderTypeMale        GenderType = "male"
+	GenderTypeFemale      GenderType = "female"
+	GenderTypeDiverse     GenderType = "diverse"
 )
 
 func (e *GenderType) Scan(src interface{}) error {
@@ -153,12 +154,102 @@ func (ns NullGenderType) Value() (driver.Value, error) {
 	return string(ns.GenderType), nil
 }
 
+type MessageStatusType string
+
+const (
+	MessageStatusTypeUnspecified MessageStatusType = "unspecified"
+	MessageStatusTypeSent        MessageStatusType = "sent"
+	MessageStatusTypeDeleted     MessageStatusType = "deleted"
+	MessageStatusTypeEdited      MessageStatusType = "edited"
+)
+
+func (e *MessageStatusType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = MessageStatusType(s)
+	case string:
+		*e = MessageStatusType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for MessageStatusType: %T", src)
+	}
+	return nil
+}
+
+type NullMessageStatusType struct {
+	MessageStatusType MessageStatusType `json:"message_status_type"`
+	Valid             bool              `json:"valid"` // Valid is true if MessageStatusType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullMessageStatusType) Scan(value interface{}) error {
+	if value == nil {
+		ns.MessageStatusType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.MessageStatusType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullMessageStatusType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.MessageStatusType), nil
+}
+
+type MessageType string
+
+const (
+	MessageTypeUnspecified MessageType = "unspecified"
+	MessageTypeText        MessageType = "text"
+	MessageTypeLocation    MessageType = "location"
+)
+
+func (e *MessageType) Scan(src interface{}) error {
+	switch s := src.(type) {
+	case []byte:
+		*e = MessageType(s)
+	case string:
+		*e = MessageType(s)
+	default:
+		return fmt.Errorf("unsupported scan type for MessageType: %T", src)
+	}
+	return nil
+}
+
+type NullMessageType struct {
+	MessageType MessageType `json:"message_type"`
+	Valid       bool        `json:"valid"` // Valid is true if MessageType is not NULL
+}
+
+// Scan implements the Scanner interface.
+func (ns *NullMessageType) Scan(value interface{}) error {
+	if value == nil {
+		ns.MessageType, ns.Valid = "", false
+		return nil
+	}
+	ns.Valid = true
+	return ns.MessageType.Scan(value)
+}
+
+// Value implements the driver Valuer interface.
+func (ns NullMessageType) Value() (driver.Value, error) {
+	if !ns.Valid {
+		return nil, nil
+	}
+	return string(ns.MessageType), nil
+}
+
 type ChatMessage struct {
 	MessageID pgtype.UUID        `json:"message_id"`
 	EventID   pgtype.UUID        `json:"event_id"`
 	UserID    pgtype.UUID        `json:"user_id"`
-	Message   string             `json:"message"`
-	Timestamp pgtype.Timestamptz `json:"timestamp"`
+	Content   string             `json:"content"`
+	Type      MessageType        `json:"type"`
+	Status    MessageStatusType  `json:"status"`
+	CreatedAt pgtype.Timestamptz `json:"created_at"`
+	EditedAt  pgtype.Timestamptz `json:"edited_at"`
 }
 
 type Event struct {

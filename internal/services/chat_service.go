@@ -40,14 +40,15 @@ func NewChatService(repo repositories.ChatRepository) pb.ChatServiceServer {
 }
 
 func (s *chatService) CreateMessage(ctx context.Context, req *pb.CreateMessageRequest) (*pb.Message, error) {
-	if len(req.EventId) == 0 || len(req.UserId) == 0 || req.Message == "" {
+	if len(req.EventId) == 0 || len(req.UserId) == 0 || req.Content == "" {
 		return nil, status.Error(codes.InvalidArgument, "event_id, user_id, and comment are required")
 	}
 
 	params := &sqlc.CreateChatMessageParams{
 		EventID: convertUUID(req.EventId),
 		UserID:  convertUUID(req.UserId),
-		Message: req.Message,
+		Content: req.Content,
+		Type:    convertPbMessageTypeToSQL(req.Type),
 	}
 
 	msg, err := s.chatRepo.CreateMessage(ctx, params)
@@ -59,8 +60,10 @@ func (s *chatService) CreateMessage(ctx context.Context, req *pb.CreateMessageRe
 		MessageId: msg.MessageID.Bytes[:],
 		EventId:   msg.EventID.Bytes[:],
 		UserId:    msg.UserID.Bytes[:],
-		Timestamp: timestamppb.New(msg.Timestamp.Time),
-		Message:   msg.Message,
+		CreatedAt: timestamppb.New(msg.CreatedAt.Time),
+		Content:   msg.Content,
+		Status:    convertSQLMessageStatusToPB(msg.Status),
+		Type:      convertSQLMessageTypeToPB(msg.Type),
 	}
 
 	s.broadcastMessage(pb_msg)
@@ -92,8 +95,10 @@ func (s *chatService) GetMessages(ctx context.Context, req *pb.GetMessagesReques
 			MessageId:     msg.MessageID.Bytes[:],
 			EventId:       msg.EventID.Bytes[:],
 			UserId:        msg.UserID.Bytes[:],
-			Message:       msg.Message,
-			Timestamp:     timestamppb.New(msg.Timestamp.Time),
+			Content:       msg.Content,
+			CreatedAt:     timestamppb.New(msg.CreatedAt.Time),
+			Status:        convertSQLMessageStatusToPB(msg.Status),
+			Type:          convertSQLMessageTypeToPB(msg.Type),
 			NumberOfLikes: numberOfLikes,
 			IsLikedByUser: msg.IsLikedByUser,
 		}
@@ -189,8 +194,10 @@ func (s *chatService) StreamMessages(req *pb.StreamMessagesRequest, stream pb.Ch
 			MessageId:     msg.MessageID.Bytes[:],
 			EventId:       msg.EventID.Bytes[:],
 			UserId:        msg.UserID.Bytes[:],
-			Message:       msg.Message,
-			Timestamp:     timestamppb.New(msg.Timestamp.Time),
+			Content:       msg.Content,
+			CreatedAt:     timestamppb.New(msg.CreatedAt.Time),
+			Status:        convertSQLMessageStatusToPB(msg.Status),
+			Type:          convertSQLMessageTypeToPB(msg.Type),
 			NumberOfLikes: numberOfLikes,
 			IsLikedByUser: msg.IsLikedByUser,
 		}
@@ -298,5 +305,53 @@ func (s *chatService) cleanupInactiveSubscribers() {
 			}
 			return true
 		})
+	}
+}
+
+func convertPbMessageTypeToSQL(status pb.MessageType) sqlc.MessageType {
+	switch status {
+	case pb.MessageType_MESSAGE_TYPE_TEXT:
+		return sqlc.MessageTypeText
+	case pb.MessageType_MESSAGE_TYPE_LOCATION:
+		return sqlc.MessageTypeLocation
+	default:
+		return sqlc.MessageTypeUnspecified
+	}
+}
+
+func convertSQLMessageTypeToPB(status sqlc.MessageType) pb.MessageType {
+	switch status {
+	case sqlc.MessageTypeText:
+		return pb.MessageType_MESSAGE_TYPE_TEXT
+	case sqlc.MessageTypeLocation:
+		return pb.MessageType_MESSAGE_TYPE_LOCATION
+	default:
+		return pb.MessageType_MESSAGE_TYPE_UNSPECIFIED
+	}
+}
+
+func convertPbMessageStatusToSQL(status pb.MessageStatus) sqlc.MessageStatusType {
+	switch status {
+	case pb.MessageStatus_MESSAGE_STATUS_SENT:
+		return sqlc.MessageStatusTypeSent
+	case pb.MessageStatus_MESSAGE_STATUS_DELETED:
+		return sqlc.MessageStatusTypeDeleted
+	case pb.MessageStatus_MESSAGE_STATUS_EDITED:
+		return sqlc.MessageStatusTypeEdited
+	default:
+		return sqlc.MessageStatusTypeUnspecified
+	}
+}
+
+func convertSQLMessageStatusToPB(status sqlc.MessageStatusType) pb.MessageStatus {
+	switch status {
+	case sqlc.MessageStatusTypeSent:
+		return pb.MessageStatus_MESSAGE_STATUS_SENT
+	case sqlc.MessageStatusTypeDeleted:
+		return pb.MessageStatus_MESSAGE_STATUS_DELETED
+	case sqlc.MessageStatusTypeEdited:
+		return pb.MessageStatus_MESSAGE_STATUS_EDITED
+	default:
+		return pb.MessageStatus_MESSAGE_STATUS_UNSPECIFIED
 	}
 }

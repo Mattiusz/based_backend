@@ -14,30 +14,31 @@ service UserService {
   rpc DeleteUser(DeleteUserRequest) returns (google.protobuf.Empty);
 }
 
-enum GENDER {
-  MALE = 0;
-  FEMALE = 1;
-  DIVERSE = 2;
+enum UserGender {
+  USER_GENDER_UNSPECIFIED = 0;
+  USER_GENDER_MALE = 1;
+  USER_GENDER_FEMALE = 2;
+  USER_GENDER_DIVERSE = 3;
 }
 
 message User {
   bytes user_id = 1;
   string display_name = 2;
   google.protobuf.Timestamp birthday = 3;
-  GENDER gender = 4;
+  UserGender gender = 4;
 }
 
 message CreateUserRequest {
   google.protobuf.Timestamp birthday = 1;
   string display_name = 2;
-  GENDER gender = 3;
+  UserGender gender = 3;
 }
 
 message UpdateUserRequest {
   bytes user_id = 1;
   string display_name = 2;
   google.protobuf.Timestamp birthday = 3;
-  GENDER gender = 4;
+  UserGender gender = 4;
 }
 
 message GetUserRequest {

@@ -26,40 +26,28 @@ message Location {
 }
 
 message Event {
-  // Core identifiers
   bytes event_id = 1;
   bytes creator_id = 2;
-  
-  // Basic event information
   string name = 3;
   optional string venue = 4;
   optional string description = 5;
   optional bytes thumbnail = 6;
-  STATUS status = 7;
-  
-  // Time and location
-  Location location = 8;
-  google.protobuf.Timestamp datetime = 9;
-  int32 timezone = 10;
-  google.protobuf.Timestamp created_at = 11;
-  
-  // Capacity and attendance
-  int32 max_attendees = 12;
-  int64 number_of_attendees = 13;
-  int64 number_of_comments = 14;
-  
-  // Categories and tags
-  repeated string categories = 15;
-  
-  // Participation restrictions
-  int32 age_range_min = 16;
-  int32 age_range_max = 17;
-  bool allow_female = 18;
-  bool allow_male = 19;
-  bool allow_diverse = 20;
+  Location location = 7;
+  google.protobuf.Timestamp datetime = 8;
+  EventStatus status = 9;
+  repeated EventCategory categories = 10;
+  int32 max_attendees = 11;
+  int64 number_of_attendees = 12;
+  int64 number_of_comments = 13;
+  int32 age_range_min = 14;
+  int32 age_range_max = 15;
+  bool allow_female = 16;
+  bool allow_male = 17;
+  bool allow_diverse = 18;
+  int32 timezone = 19;
 }
 
-enum STATUS {
+enum EventStatus {
   EVENT_STATUS_UNSPECIFIED = 0;
   EVENT_STATUS_UPCOMING = 1;
   EVENT_STATUS_ONGOING = 2;
@@ -68,7 +56,7 @@ enum STATUS {
   EVENT_STATUS_RESCHEDULED = 5;
 }
 
-enum CATEGORY {
+enum EventCategory {
   EVENT_CATEGORY_UNSPECIFIED = 0;
   EVENT_CATEGORY_SPORTS = 1;
   EVENT_CATEGORY_MUSIC_AND_MOVIES = 2;
@@ -93,7 +81,7 @@ message CreateEventRequest {
   int32 max_attendees = 6;
   string venue = 7;
   string description = 8;
-  repeated CATEGORY categories = 9;
+  repeated EventCategory categories = 9;
   int32 age_range_min = 10;
   int32 age_range_max = 11;
   bool allow_female = 12;
@@ -109,18 +97,18 @@ message GetEventByIDRequest {
 message GetNearbyEventsRequest {
   Location location = 1;
   double radius_meters = 2;
-  GENDER gender = 3;
-  STATUS status = 4;
+  UserGender gender = 3;
+  EventStatus status = 4;
   int32 limit = 5;
-}
-
-message GetNearbyEventsResponse {
-  repeated EventWithDistance events = 1;
 }
 
 message EventWithDistance {
   Event event = 1;
   double distance_meters = 2;
+}
+
+message GetNearbyEventsResponse {
+  repeated EventWithDistance events = 1;
 }
 
 message GetUserEventsRequest {
@@ -144,7 +132,15 @@ message LeaveEventRequest {
 
 message UpdateEventRequest {
   bytes event_id = 1;
-  STATUS status = 2;
+  EventStatus status = 2;
+  Location location = 3;
+  google.protobuf.Timestamp datetime = 4;
+  int32 timezone = 5;
+  int32 max_attendees = 6;
+  string venue = 7;
+  string description = 8;
+  repeated EventCategory categories = 9;
+  bytes thumbnail = 10;
 }
 
 message DeleteEventRequest {

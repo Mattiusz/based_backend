@@ -12,26 +12,35 @@ import (
 )
 
 const createChatMessage = `-- name: CreateChatMessage :one
-INSERT INTO chat_messages (event_id, user_id, message)
-VALUES ($1, $2, $3)
-RETURNING message_id, event_id, user_id, message, timestamp
+INSERT INTO chat_messages (event_id, user_id, content, edited_at, type, status)
+VALUES ($1, $2, $3, NOW(), $4, 'sent')
+RETURNING message_id, event_id, user_id, content, type, status, created_at, edited_at
 `
 
 type CreateChatMessageParams struct {
 	EventID pgtype.UUID `json:"event_id"`
 	UserID  pgtype.UUID `json:"user_id"`
-	Message string      `json:"message"`
+	Content string      `json:"content"`
+	Type    MessageType `json:"type"`
 }
 
 func (q *Queries) CreateChatMessage(ctx context.Context, arg CreateChatMessageParams) (ChatMessage, error) {
-	row := q.db.QueryRow(ctx, createChatMessage, arg.EventID, arg.UserID, arg.Message)
+	row := q.db.QueryRow(ctx, createChatMessage,
+		arg.EventID,
+		arg.UserID,
+		arg.Content,
+		arg.Type,
+	)
 	var i ChatMessage
 	err := row.Scan(
 		&i.MessageID,
 		&i.EventID,
 		&i.UserID,
-		&i.Message,
-		&i.Timestamp,
+		&i.Content,
+		&i.Type,
+		&i.Status,
+		&i.CreatedAt,
+		&i.EditedAt,
 	)
 	return i, err
 }
@@ -55,7 +64,7 @@ func (q *Queries) DeleteChatMessage(ctx context.Context, arg DeleteChatMessagePa
 
 const getEventMessages = `-- name: GetEventMessages :many
 SELECT 
-    cm.message_id, cm.event_id, cm.user_id, cm.message, cm.timestamp,
+    cm.message_id, cm.event_id, cm.user_id, cm.content, cm.type, cm.status, cm.created_at, cm.edited_at,
     COUNT(ml.user_id) as number_of_likes,
     EXISTS(
         SELECT 1 FROM message_likes 
@@ -65,7 +74,7 @@ FROM chat_messages cm
 LEFT JOIN message_likes ml ON cm.message_id = ml.message_id
 WHERE cm.event_id = $1
 GROUP BY cm.message_id
-ORDER BY cm.timestamp
+ORDER BY cm.created_at
 `
 
 type GetEventMessagesParams struct {
@@ -77,8 +86,11 @@ type GetEventMessagesRow struct {
 	MessageID     pgtype.UUID        `json:"message_id"`
 	EventID       pgtype.UUID        `json:"event_id"`
 	UserID        pgtype.UUID        `json:"user_id"`
-	Message       string             `json:"message"`
-	Timestamp     pgtype.Timestamptz `json:"timestamp"`
+	Content       string             `json:"content"`
+	Type          MessageType        `json:"type"`
+	Status        MessageStatusType  `json:"status"`
+	CreatedAt     pgtype.Timestamptz `json:"created_at"`
+	EditedAt      pgtype.Timestamptz `json:"edited_at"`
 	NumberOfLikes int64              `json:"number_of_likes"`
 	IsLikedByUser bool               `json:"is_liked_by_user"`
 }
@@ -96,8 +108,11 @@ func (q *Queries) GetEventMessages(ctx context.Context, arg GetEventMessagesPara
 			&i.MessageID,
 			&i.EventID,
 			&i.UserID,
-			&i.Message,
-			&i.Timestamp,
+			&i.Content,
+			&i.Type,
+			&i.Status,
+			&i.CreatedAt,
+			&i.EditedAt,
 			&i.NumberOfLikes,
 			&i.IsLikedByUser,
 		); err != nil {

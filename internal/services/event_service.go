@@ -87,15 +87,10 @@ func (s *eventService) GetNearbyEvents(ctx context.Context, req *pb.GetNearbyEve
 		return nil, status.Error(codes.InvalidArgument, "location is required")
 	}
 
-	gender, err := convertPBGenderToSQL(req.Gender)
-	if err != nil {
-		return nil, err
-	}
-
 	params := &sqlc.GetNearbyEventsByStatusAndGenderParams{
 		StMakepoint:   req.Location.Longitude,
 		StMakepoint_2: req.Location.Latitude,
-		Column5:       gender,
+		Column5:       convertPBGenderToSQL(req.Gender),
 		Status:        sqlc.EventStatusTypeUpcoming,
 		StDwithin:     req.RadiusMeters,
 		Limit:         req.Limit,
@@ -218,15 +213,14 @@ func validateCreateEventRequest(req *pb.CreateEventRequest) error {
 }
 
 func convertCreateEventResponseToEvent(event *sqlc.CreateEventRow) *pb.Event {
-	categories := make([]string, len(event.Categories))
+	categories := make([]pb.EventCategory, len(event.Categories))
 	for i, category := range event.Categories {
-		categories[i] = convertSQLCategoryToPB(category).String()
+		categories[i] = convertSQLCategoryToPB(category)
 	}
 
 	return &pb.Event{
 		EventId:   event.EventID.Bytes[:],
 		CreatorId: event.CreatorID.Bytes[:],
-		CreatedAt: timestamppb.New(event.CreatedAt.Time),
 		Name:      event.Name,
 		Location: &pb.Location{
 			Latitude:  event.Latitude.(float64),
@@ -255,9 +249,9 @@ func convertGetUserEventsResponseToEvent(events []sqlc.GetUserEventsRow) *pb.Get
 	}
 
 	for i, event := range events {
-		categories := make([]string, len(event.Categories))
+		categories := make([]pb.EventCategory, len(event.Categories))
 		for i, category := range event.Categories {
-			categories[i] = convertSQLCategoryToPB(category).String()
+			categories[i] = convertSQLCategoryToPB(category)
 		}
 
 		response.Events[i] = &pb.Event{
@@ -277,7 +271,6 @@ func convertGetUserEventsResponseToEvent(events []sqlc.GetUserEventsRow) *pb.Get
 			AllowFemale:       event.AllowFemale,
 			AllowMale:         event.AllowMale,
 			AllowDiverse:      event.AllowDiverse,
-			CreatedAt:         timestamppb.New(event.CreatedAt.Time),
 			NumberOfAttendees: event.NumberOfAttendees,
 			Categories:        categories,
 		}
@@ -287,9 +280,9 @@ func convertGetUserEventsResponseToEvent(events []sqlc.GetUserEventsRow) *pb.Get
 }
 
 func convertGetEventByIdResponseToEvent(event sqlc.GetEventByIDRow) *pb.Event {
-	categories := make([]string, len(event.Categories))
+	categories := make([]pb.EventCategory, len(event.Categories))
 	for i, category := range event.Categories {
-		categories[i] = convertSQLCategoryToPB(category).String()
+		categories[i] = convertSQLCategoryToPB(category)
 	}
 
 	return &pb.Event{
@@ -323,9 +316,9 @@ func convertGetNearbyEventsResponseToProto(events []sqlc.GetNearbyEventsByStatus
 	}
 
 	for i, event := range events {
-		categories := make([]string, len(event.Categories))
+		categories := make([]pb.EventCategory, len(event.Categories))
 		for i, category := range event.Categories {
-			categories[i] = convertSQLCategoryToPB(category).String()
+			categories[i] = convertSQLCategoryToPB(category)
 		}
 
 		response.Events[i] = &pb.EventWithDistance{
@@ -346,7 +339,6 @@ func convertGetNearbyEventsResponseToProto(events []sqlc.GetNearbyEventsByStatus
 				AllowFemale:       event.AllowFemale,
 				AllowMale:         event.AllowMale,
 				AllowDiverse:      event.AllowDiverse,
-				CreatedAt:         timestamppb.New(event.CreatedAt.Time),
 				NumberOfAttendees: event.NumberOfAttendees,
 				Categories:        categories,
 			},
@@ -363,98 +355,98 @@ func convertUUID(uuid []byte) pgtype.UUID {
 	return pgtype.UUID{Bytes: bytes, Valid: true}
 }
 
-func convertPBCategoryToSQL(category pb.CATEGORY) sqlc.EventCategoryType {
+func convertPBCategoryToSQL(category pb.EventCategory) sqlc.EventCategoryType {
 	switch category {
-	case pb.CATEGORY_EVENT_CATEGORY_ART:
+	case pb.EventCategory_EVENT_CATEGORY_ART:
 		return sqlc.EventCategoryTypeArt
-	case pb.CATEGORY_EVENT_CATEGORY_SPORTS:
+	case pb.EventCategory_EVENT_CATEGORY_SPORTS:
 		return sqlc.EventCategoryTypeSports
-	case pb.CATEGORY_EVENT_CATEGORY_MUSIC_AND_MOVIES:
+	case pb.EventCategory_EVENT_CATEGORY_MUSIC_AND_MOVIES:
 		return sqlc.EventCategoryTypeMusicAndMovies
-	case pb.CATEGORY_EVENT_CATEGORY_FOOD_AND_DRINKS:
+	case pb.EventCategory_EVENT_CATEGORY_FOOD_AND_DRINKS:
 		return sqlc.EventCategoryTypeFoodAndDrinks
-	case pb.CATEGORY_EVENT_CATEGORY_PARTY_AND_GAMES:
+	case pb.EventCategory_EVENT_CATEGORY_PARTY_AND_GAMES:
 		return sqlc.EventCategoryTypePartyAndGames
-	case pb.CATEGORY_EVENT_CATEGORY_BUSINESS:
+	case pb.EventCategory_EVENT_CATEGORY_BUSINESS:
 		return sqlc.EventCategoryTypeBusiness
-	case pb.CATEGORY_EVENT_CATEGORY_NATURE:
+	case pb.EventCategory_EVENT_CATEGORY_NATURE:
 		return sqlc.EventCategoryTypeNature
-	case pb.CATEGORY_EVENT_CATEGORY_TECHNOLOGY:
+	case pb.EventCategory_EVENT_CATEGORY_TECHNOLOGY:
 		return sqlc.EventCategoryTypeTechnology
-	case pb.CATEGORY_EVENT_CATEGORY_TRAVEL:
+	case pb.EventCategory_EVENT_CATEGORY_TRAVEL:
 		return sqlc.EventCategoryTypeTravel
-	case pb.CATEGORY_EVENT_CATEGORY_EDUCATION:
+	case pb.EventCategory_EVENT_CATEGORY_EDUCATION:
 		return sqlc.EventCategoryTypeEducation
-	case pb.CATEGORY_EVENT_CATEGORY_CHARITY:
+	case pb.EventCategory_EVENT_CATEGORY_CHARITY:
 		return sqlc.EventCategoryTypeCharity
-	case pb.CATEGORY_EVENT_CATEGORY_OTHER:
+	case pb.EventCategory_EVENT_CATEGORY_OTHER:
 		return sqlc.EventCategoryTypeOther
 	default:
 		return sqlc.EventCategoryTypeUnspecified
 	}
 }
 
-func convertSQLCategoryToPB(category sqlc.EventCategoryType) pb.CATEGORY {
+func convertSQLCategoryToPB(category sqlc.EventCategoryType) pb.EventCategory {
 	switch category {
 	case sqlc.EventCategoryTypeArt:
-		return pb.CATEGORY_EVENT_CATEGORY_ART
+		return pb.EventCategory_EVENT_CATEGORY_ART
 	case sqlc.EventCategoryTypeSports:
-		return pb.CATEGORY_EVENT_CATEGORY_SPORTS
+		return pb.EventCategory_EVENT_CATEGORY_SPORTS
 	case sqlc.EventCategoryTypeMusicAndMovies:
-		return pb.CATEGORY_EVENT_CATEGORY_MUSIC_AND_MOVIES
+		return pb.EventCategory_EVENT_CATEGORY_MUSIC_AND_MOVIES
 	case sqlc.EventCategoryTypeFoodAndDrinks:
-		return pb.CATEGORY_EVENT_CATEGORY_FOOD_AND_DRINKS
+		return pb.EventCategory_EVENT_CATEGORY_FOOD_AND_DRINKS
 	case sqlc.EventCategoryTypePartyAndGames:
-		return pb.CATEGORY_EVENT_CATEGORY_PARTY_AND_GAMES
+		return pb.EventCategory_EVENT_CATEGORY_PARTY_AND_GAMES
 	case sqlc.EventCategoryTypeBusiness:
-		return pb.CATEGORY_EVENT_CATEGORY_BUSINESS
+		return pb.EventCategory_EVENT_CATEGORY_BUSINESS
 	case sqlc.EventCategoryTypeNature:
-		return pb.CATEGORY_EVENT_CATEGORY_NATURE
+		return pb.EventCategory_EVENT_CATEGORY_NATURE
 	case sqlc.EventCategoryTypeTechnology:
-		return pb.CATEGORY_EVENT_CATEGORY_TECHNOLOGY
+		return pb.EventCategory_EVENT_CATEGORY_TECHNOLOGY
 	case sqlc.EventCategoryTypeTravel:
-		return pb.CATEGORY_EVENT_CATEGORY_TRAVEL
+		return pb.EventCategory_EVENT_CATEGORY_TRAVEL
 	case sqlc.EventCategoryTypeEducation:
-		return pb.CATEGORY_EVENT_CATEGORY_EDUCATION
+		return pb.EventCategory_EVENT_CATEGORY_EDUCATION
 	case sqlc.EventCategoryTypeCharity:
-		return pb.CATEGORY_EVENT_CATEGORY_CHARITY
+		return pb.EventCategory_EVENT_CATEGORY_CHARITY
 	case sqlc.EventCategoryTypeOther:
-		return pb.CATEGORY_EVENT_CATEGORY_OTHER
+		return pb.EventCategory_EVENT_CATEGORY_OTHER
 	default:
-		return pb.CATEGORY_EVENT_CATEGORY_UNSPECIFIED
+		return pb.EventCategory_EVENT_CATEGORY_UNSPECIFIED
 	}
 }
 
-func convertPbStatusToSQL(status pb.STATUS) sqlc.EventStatusType {
+func convertPbStatusToSQL(status pb.EventStatus) sqlc.EventStatusType {
 	switch status {
-	case pb.STATUS_EVENT_STATUS_UPCOMING:
+	case pb.EventStatus_EVENT_STATUS_UPCOMING:
 		return sqlc.EventStatusTypeUpcoming
-	case pb.STATUS_EVENT_STATUS_ONGOING:
+	case pb.EventStatus_EVENT_STATUS_ONGOING:
 		return sqlc.EventStatusTypeOngoing
-	case pb.STATUS_EVENT_STATUS_CANCELLED:
+	case pb.EventStatus_EVENT_STATUS_CANCELLED:
 		return sqlc.EventStatusTypeCancelled
-	case pb.STATUS_EVENT_STATUS_COMPLETED:
+	case pb.EventStatus_EVENT_STATUS_COMPLETED:
 		return sqlc.EventStatusTypeCompleted
-	case pb.STATUS_EVENT_STATUS_RESCHEDULED:
+	case pb.EventStatus_EVENT_STATUS_RESCHEDULED:
 		return sqlc.EventStatusTypeRescheduled
 	default:
 		return sqlc.EventStatusTypeUnspecified
 	}
 }
 
-func convertSQLStatusToPB(status sqlc.EventStatusType) pb.STATUS {
+func convertSQLStatusToPB(status sqlc.EventStatusType) pb.EventStatus {
 	switch status {
 	case sqlc.EventStatusTypeUpcoming:
-		return pb.STATUS_EVENT_STATUS_UPCOMING
+		return pb.EventStatus_EVENT_STATUS_UPCOMING
 	case sqlc.EventStatusTypeOngoing:
-		return pb.STATUS_EVENT_STATUS_ONGOING
+		return pb.EventStatus_EVENT_STATUS_ONGOING
 	case sqlc.EventStatusTypeCancelled:
-		return pb.STATUS_EVENT_STATUS_CANCELLED
+		return pb.EventStatus_EVENT_STATUS_CANCELLED
 	case sqlc.EventStatusTypeCompleted:
-		return pb.STATUS_EVENT_STATUS_COMPLETED
+		return pb.EventStatus_EVENT_STATUS_COMPLETED
 	case sqlc.EventStatusTypeRescheduled:
-		return pb.STATUS_EVENT_STATUS_RESCHEDULED
+		return pb.EventStatus_EVENT_STATUS_RESCHEDULED
 	default:
-		return pb.STATUS_EVENT_STATUS_UNSPECIFIED
+		return pb.EventStatus_EVENT_STATUS_UNSPECIFIED
 	}
 }

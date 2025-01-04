@@ -23,41 +23,12 @@ func NewUserService(repo repositories.UserRepository) pb.UserServiceServer {
 	return &userService{userRepo: repo}
 }
 
-func convertPBGenderToSQL(gender pb.GENDER) (sqlc.GenderType, error) {
-	switch gender {
-	case pb.GENDER_MALE:
-		return sqlc.GenderTypeMale, nil
-	case pb.GENDER_FEMALE:
-		return sqlc.GenderTypeFemale, nil
-	case pb.GENDER_DIVERSE:
-		return sqlc.GenderTypeDiverse, nil
-	default:
-		return "", status.Errorf(codes.InvalidArgument, "invalid gender value")
-	}
-}
-
-func convertSQLGenderToPB(gender sqlc.GenderType) (pb.GENDER, error) {
-	switch gender {
-	case sqlc.GenderTypeMale:
-		return pb.GENDER_MALE, nil
-	case sqlc.GenderTypeFemale:
-		return pb.GENDER_FEMALE, nil
-	case sqlc.GenderTypeDiverse:
-		return pb.GENDER_DIVERSE, nil
-	default:
-		return pb.GENDER_DIVERSE, status.Errorf(codes.InvalidArgument, "invalid gender value")
-	}
-}
-
 func (s *userService) CreateUser(ctx context.Context, req *pb.CreateUserRequest) (*pb.User, error) {
 	if req.DisplayName == "" || req.Birthday == nil {
 		return nil, status.Error(codes.InvalidArgument, "name is required")
 	}
 
-	gender, err := convertPBGenderToSQL(req.Gender)
-	if err != nil {
-		return nil, err
-	}
+	gender := convertPBGenderToSQL(req.Gender)
 
 	params := &sqlc.CreateUserParams{
 		Name:     req.DisplayName,
@@ -70,16 +41,11 @@ func (s *userService) CreateUser(ctx context.Context, req *pb.CreateUserRequest)
 		return nil, status.Errorf(codes.Internal, "failed to create user: %v", err)
 	}
 
-	gender_pb, err := convertSQLGenderToPB(user.Gender)
-	if err != nil {
-		return nil, err
-	}
-
 	return &pb.User{
 		UserId:      user.UserID.Bytes[:],
 		DisplayName: user.Name,
 		Birthday:    timestamppb.New(user.Birthday.Time),
-		Gender:      gender_pb,
+		Gender:      convertSQLGenderToPB(user.Gender),
 	}, nil
 }
 
@@ -110,15 +76,11 @@ func (s *userService) UpdateUser(ctx context.Context, req *pb.UpdateUserRequest)
 		return nil, status.Errorf(codes.Internal, "failed to update user: %v", err)
 	}
 
-	gender_pb, err := convertSQLGenderToPB(updated_user.Gender)
-	if err != nil {
-		return nil, err
-	}
 	return &pb.User{
 		UserId:      updated_user.UserID.Bytes[:],
 		DisplayName: updated_user.Name,
 		Birthday:    timestamppb.New(updated_user.Birthday.Time),
-		Gender:      gender_pb,
+		Gender:      convertSQLGenderToPB(updated_user.Gender),
 	}, nil
 }
 
@@ -137,16 +99,11 @@ func (s *userService) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.
 		return nil, status.Errorf(codes.Internal, "failed to get user: %v", err)
 	}
 
-	gender, err := convertSQLGenderToPB(user.Gender)
-	if err != nil {
-		return nil, err
-	}
-
 	return &pb.User{
 		UserId:      user.UserID.Bytes[:],
 		DisplayName: user.Name,
 		Birthday:    timestamppb.New(user.Birthday.Time),
-		Gender:      gender,
+		Gender:      convertSQLGenderToPB(user.Gender),
 	}, nil
 }
 
@@ -165,4 +122,30 @@ func (s *userService) DeleteUser(ctx context.Context, req *pb.DeleteUserRequest)
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+func convertPBGenderToSQL(gender pb.UserGender) sqlc.GenderType {
+	switch gender {
+	case pb.UserGender_USER_GENDER_MALE:
+		return sqlc.GenderTypeMale
+	case pb.UserGender_USER_GENDER_FEMALE:
+		return sqlc.GenderTypeFemale
+	case pb.UserGender_USER_GENDER_DIVERSE:
+		return sqlc.GenderTypeDiverse
+	default:
+		return sqlc.GenderTypeUnspecified
+	}
+}
+
+func convertSQLGenderToPB(gender sqlc.GenderType) pb.UserGender {
+	switch gender {
+	case sqlc.GenderTypeMale:
+		return pb.UserGender_USER_GENDER_MALE
+	case sqlc.GenderTypeFemale:
+		return pb.UserGender_USER_GENDER_FEMALE
+	case sqlc.GenderTypeDiverse:
+		return pb.UserGender_USER_GENDER_DIVERSE
+	default:
+		return pb.UserGender_USER_GENDER_UNSPECIFIED
+	}
 }

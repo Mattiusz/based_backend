@@ -16,21 +16,36 @@ service ChatService {
   rpc DeleteMessage(DeleteMessageRequest) returns (google.protobuf.Empty);
 }
 
+enum MessageStatus {
+  MESSAGE_STATUS_UNSPECIFIED = 0;
+  MESSAGE_STATUS_SENT = 1;
+  MESSAGE_STATUS_DELETED = 2;
+  MESSAGE_STATUS_EDITED = 3;
+}
+
+enum MessageType {
+  MESSAGE_TYPE_UNSPECIFIED = 0;
+  MESSAGE_TYPE_TEXT = 1;
+  MESSAGE_TYPE_LOCATION = 2;
+}
+
 message Message {
   bytes message_id = 1;
   bytes event_id = 2;
   bytes user_id = 3;
-  google.protobuf.Timestamp timestamp = 4;
-  string message = 5;
-  int32 number_of_likes = 6;
-  bool is_liked_by_user = 7;
-  bool is_deleted = 8;
+  google.protobuf.Timestamp created_at = 4;
+  string content = 5;
+  MessageStatus status = 6;
+  MessageType type = 7;
+  int32 number_of_likes = 8;
+  bool is_liked_by_user = 9;
 }
 
 message CreateMessageRequest {
   bytes event_id = 1;
   bytes user_id = 2;
-  string message = 3;
+  string content = 3;
+  MessageType type = 4;
 }
 
 message GetMessagesRequest {
