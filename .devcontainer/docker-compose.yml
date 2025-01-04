@@ -1,4 +1,27 @@
 services:
+  app:
+      build: 
+        context: ..
+        dockerfile: Dockerfile
+      container_name: go-server
+      depends_on:
+        postgres:
+          condition: service_healthy
+      environment:
+        - DB_HOST=postgres
+        - DB_USER=user
+        - DB_PASSWORD=password
+        - DB_NAME=myservice_db
+        - DB_PORT=5432
+      ports:
+        - "50051:50051"
+      healthcheck:
+        test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+        interval: 30s
+        timeout: 3s
+        retries: 3
+        start_period: 5s
+
   postgres:
     image: postgis/postgis:17-master
     container_name: postgres
