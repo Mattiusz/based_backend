@@ -8,6 +8,7 @@ SQLC_CONFIG=sqlc.yaml
 MIGRATIONS_DIR=./sql/migrations
 GRPC_OUT_DIR=./internal/gen/proto
 PROTO_OUT_DIR=./internal/gen/proto
+DOCKER_COMPOSE = docker compose
 
 all: build
 
@@ -36,3 +37,11 @@ fmt:
 tidy:
 	go mod tidy
 
+docker-build:
+	cd .devcontainer && $(DOCKER_COMPOSE) build app
+
+docker-light:
+	cd .devcontainer && $(DOCKER_COMPOSE) --profile light up -d
+
+docker-full-with-dashboard:
+	cd .devcontainer && $(DOCKER_COMPOSE) --profile full up -d
