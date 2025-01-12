@@ -37,8 +37,8 @@ func (s *eventService) CreateEvent(ctx context.Context, req *pb.CreateEventReque
 	params := &sqlc.CreateEventParams{
 		CreatorID:     convertUUID(req.CreatorId),
 		Name:          req.Name,
-		StMakepoint:   req.Location.Longitude,
-		StMakepoint_2: req.Location.Latitude,
+		StMakepoint:   req.Location.Latitude,
+		StMakepoint_2: req.Location.Longitude,
 		Datetime:      pgtype.Timestamptz{Time: req.Datetime.AsTime(), Valid: true},
 		MaxAttendees:  req.MaxAttendees,
 		Status:        sqlc.EventStatusTypeUpcoming,
@@ -88,8 +88,8 @@ func (s *eventService) GetNearbyEvents(ctx context.Context, req *pb.GetNearbyEve
 	}
 
 	params := &sqlc.GetNearbyEventsByStatusAndGenderParams{
-		StMakepoint:   req.Location.Longitude,
-		StMakepoint_2: req.Location.Latitude,
+		StMakepoint:   req.Location.Latitude,
+		StMakepoint_2: req.Location.Longitude,
 		Column5:       convertPBGenderToSQL(req.Gender),
 		Status:        sqlc.EventStatusTypeUpcoming,
 		StDwithin:     req.RadiusMeters,

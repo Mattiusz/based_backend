@@ -82,7 +82,7 @@ func (s *chatService) GetMessages(ctx context.Context, req *pb.GetMessagesReques
 
 	messages, err := s.chatRepo.GetEventMessages(ctx, params)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get messages: %v", err)
+		return nil, status.Errorf(codes.NotFound, "failed to get messages: %v", err)
 	}
 
 	response := &pb.GetMessagesResponse{
