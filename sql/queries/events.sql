@@ -95,15 +95,18 @@ SELECT
     e.allow_male,
     e.allow_diverse,
     e.categories,
-    ST_Distance(e.location, ST_SetSRID(ST_MakePoint($3, $2), 4326)) as distance_meters,
+    ST_Distance(
+        ST_Transform(e.location, 3857),
+        ST_Transform(ST_SetSRID(ST_MakePoint($3, $2), 4326), 3857)
+    ) as distance_meters,
     COUNT(DISTINCT ea.user_id) as number_of_attendees
 FROM events e
 LEFT JOIN event_attendees ea ON e.event_id = ea.event_id
 WHERE 
     e.status = $1 AND
     ST_DWithin(
-        e.location,
-        ST_SetSRID(ST_MakePoint($2, $3), 4326),
+        ST_Transform(e.location, 3857),
+        ST_Transform(ST_SetSRID(ST_MakePoint($3, $2), 4326), 3857),
         $4  -- radius in meters
     ) AND
     CASE 
