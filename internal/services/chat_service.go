@@ -283,8 +283,7 @@ func (s *chatService) cleanupInactiveSubscribers() {
 
 	for range ticker.C {
 		now := time.Now()
-		s.subscribers.Range(func(key, value interface{}) bool {
-			eventID := key.([]byte)
+		s.subscribers.Range(func(eventID, value interface{}) bool {
 			subs := value.([]*subscriber)
 
 			var activeSubscribers []*subscriber
@@ -299,9 +298,9 @@ func (s *chatService) cleanupInactiveSubscribers() {
 			}
 
 			if len(activeSubscribers) == 0 {
-				s.subscribers.Delete(string(eventID))
+				s.subscribers.Delete(eventID)
 			} else {
-				s.subscribers.Store(string(eventID), activeSubscribers)
+				s.subscribers.Store(eventID, activeSubscribers)
 			}
 			return true
 		})
