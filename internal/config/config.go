@@ -8,15 +8,21 @@ import (
 )
 
 type Config struct {
-	DatabasePort        string
-	DatabaseHost        string
-	DatabaseUser        string
-	DatabasePassword    string
-	DatabaseName        string
-	GRPCPort            string
-	MaxPoolConns        int32
-	MaxConnLifetimeMins time.Duration
-	MigrationsDir       string
+	DatabasePort              string
+	DatabaseHost              string
+	DatabaseUser              string
+	DatabasePassword          string
+	DatabaseName              string
+	GRPCPort                  string
+	MaxPoolConns              int32
+	MaxConnLifetimeMins       time.Duration
+	MigrationsDir             string
+	AuthentikURL              string
+	AuthentikClientID         string
+	AuthentikClientSecret     string
+	AuthentikRedirectURL      string
+	AuthentikTokenEndpoint    string
+	AuthentikUserInfoEndpoint string
 }
 
 // LoadConfig retrieves and loads environment variables into the Config structure.
@@ -49,6 +55,37 @@ func LoadConfig() (*Config, error) {
 	grpcPort := os.Getenv("GRPC_PORT")
 	if grpcPort == "" {
 		grpcPort = "50051" // default port
+	}
+
+	AuthentikURL := os.Getenv("AUTHENTIK_URL")
+	if AuthentikURL == "" {
+		return nil, fmt.Errorf("AUTHENTIK_URL must be set")
+	}
+
+	AuthentikClientID := os.Getenv("AUTHENTIK_CLIENT_ID")
+	if AuthentikClientID == "" {
+
+		return nil, fmt.Errorf("AUTHENTIK_CLIENT_ID must be set")
+	}
+
+	AuthentikClientSecret := os.Getenv("AUTHENTIK_CLIENT_SECRET")
+	if AuthentikClientSecret == "" {
+		return nil, fmt.Errorf("AUTHENTIK_CLIENT_SECRET must be set")
+	}
+
+	AuthentikRedirectURL := os.Getenv("AUTHENTIK_REDIRECT_URL")
+	if AuthentikRedirectURL == "" {
+		return nil, fmt.Errorf("AUTHENTIK_REDIRECT_URL must be set")
+	}
+
+	AuthentikTokenEndpoint := os.Getenv("AUTHENTIK_TOKEN_ENDPOINT")
+	if AuthentikTokenEndpoint == "" {
+		return nil, fmt.Errorf("AUTHENTIK_TOKEN_ENDPOINT must be set")
+	}
+
+	AuthentikUserInfoEndpoint := os.Getenv("AUTHENTIK_USER_INFO_ENDPOINT")
+	if AuthentikUserInfoEndpoint == "" {
+		return nil, fmt.Errorf("AUTHENTIK_USER_INFO_ENDPOINT must be set")
 	}
 
 	currentDir, err := os.Getwd()

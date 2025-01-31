@@ -4,42 +4,24 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
-	"os"
 	"time"
 
+	"github.com/mattiusz/based_backend/internal/config"
 	pb "github.com/mattiusz/based_backend/internal/gen/proto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
 
-type Config struct {
-	ClientID     string
-	ClientSecret string
-	AuthentikURL string
-}
-
 type AuthService struct {
-	config     Config
+	config     *config.Config
 	httpClient *http.Client
 }
 
-func NewAuthService() (*AuthService, error) {
-	clientID := os.Getenv("AUTHENTIK_CLIENT_ID")
-	clientSecret := os.Getenv("AUTHENTIK_CLIENT_SECRET")
-	authentikURL := os.Getenv("AUTHENTIK_URL")
-	if clientID == "" || clientSecret == "" || authentikURL == "" {
-		return nil, fmt.Errorf("missing authentik configuration")
-	}
-
+func NewAuthService(config *config.Config) (*AuthService, error) {
 	return &AuthService{
-		config: Config{
-			ClientID:     clientID,
-			ClientSecret: clientSecret,
-			AuthentikURL: authentikURL,
-		},
+		config: config,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 			// TODO: In production, remove InsecureSkipVerify and configure proper TLS
@@ -55,8 +37,8 @@ func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*p
 	data.Set("username", req.Username)
 	data.Set("password", req.Password)
 	data.Set("email", req.Email)
-	data.Set("client_id", s.config.ClientID)
-	data.Set("client_secret", s.config.ClientSecret)
+	data.Set("client_id", s.config.AuthentikClientID)
+	data.Set("client_secret", s.config.AuthentikClientSecret)
 
 	resp, err := s.httpClient.PostForm(s.config.AuthentikURL+"/users/register/", data)
 	if err != nil {
@@ -91,8 +73,8 @@ func (s *AuthService) handlePasswordLogin(ctx context.Context, creds *pb.Passwor
 	data.Set("grant_type", "password")
 	data.Set("username", creds.Username)
 	data.Set("password", creds.Password)
-	data.Set("client_id", s.config.ClientID)
-	data.Set("client_secret", s.config.ClientSecret)
+	data.Set("client_id", s.config.AuthentikClientID)
+	data.Set("client_secret", s.config.AuthentikClientSecret)
 
 	resp, err := s.httpClient.PostForm(s.config.AuthentikURL+"/application/o/token/", data)
 	if err != nil {
@@ -123,8 +105,8 @@ func (s *AuthService) handlePasswordLogin(ctx context.Context, creds *pb.Passwor
 func (s *AuthService) ValidateToken(ctx context.Context, req *pb.ValidateTokenRequest) (*pb.ValidateTokenResponse, error) {
 	data := url.Values{}
 	data.Set("token", req.AccessToken)
-	data.Set("client_id", s.config.ClientID)
-	data.Set("client_secret", s.config.ClientSecret)
+	data.Set("client_id", s.config.AuthentikClientID)
+	data.Set("client_secret", s.config.AuthentikClientSecret)
 
 	resp, err := s.httpClient.PostForm(s.config.AuthentikURL+"/application/o/introspect/", data)
 	if err != nil {

@@ -6,14 +6,22 @@ services:
       container_name: go-server
       profiles: ["light", "full"]
       depends_on:
-        postgres:
+        postgresql:
+          condition: service_healthy
+        authentik:
           condition: service_healthy
       environment:
-        - DB_HOST=postgres
+        - DB_HOST=postgresql
         - DB_USER=user
         - DB_PASSWORD=password
         - DB_NAME=myservice_db
         - DB_PORT=5432
+        - AUTHENTIK_URL=http://authentik:9000
+        - AUTHENTIK_REDIRECT_URL=http://localhost:50051/auth/callback
+        - AUTHENTIK_TOKEN_ENDPOINT=http://authentik:9000/application/o/token/
+        - AUTHENTIK_USER_INFO_ENDPOINT=http://authentik:9000/application/o/userinfo/
+      env_file:
+      - .env
       ports:
         - "50051:50051"
       healthcheck:
@@ -23,9 +31,9 @@ services:
         retries: 3
         start_period: 5s
 
-  postgres:
+  postgresql:
     image: postgis/postgis:17-master
-    container_name: postgres
+    container_name: postgresql
     profiles: ["light", "full"]
     environment:
       POSTGRES_USER: user
@@ -35,20 +43,84 @@ services:
       POSTGRES_PORT: 5432
     ports:
       - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U user -d myservice_db"]
       interval: 5s
       timeout: 5s
       retries: 5
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+
+  redis:
+    image: docker.io/library/redis:alpine
+    command: --save 60 1 --loglevel warning
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli ping | grep PONG"]
+      start_period: 20s
+      interval: 30s
+      retries: 5
+      timeout: 3s
+    volumes:
+      - redis_data:/data
+
+  authentik:
+    image: ghcr.io/goauthentik/server:latest
+    restart: unless-stopped
+    command: server
+    environment:
+      AUTHENTIK_REDIS__HOST: redis
+      AUTHENTIK_POSTGRESQL__HOST: postgresql
+      AUTHENTIK_POSTGRESQL__USER: user
+      AUTHENTIK_POSTGRESQL__NAME: myservice_db
+      AUTHENTIK_POSTGRESQL__PASSWORD: password
+      AUTHENTIK_SECRET_KEY: authentik_password
+      PG_PASS: pg_password
+    volumes:
+      - authentik_data:/var/lib/authentik
+      - authentik_certs:/certs
+    env_file:
+      - .env
+    ports:
+      - "${COMPOSE_PORT_HTTP:-9000}:9000"
+      - "${COMPOSE_PORT_HTTPS:-9443}:9443"
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    image: ghcr.io/goauthentik/server:latest
+    restart: unless-stopped
+    command: worker
+    environment:
+      AUTHENTIK_REDIS__HOST: redis
+      AUTHENTIK_POSTGRESQL__HOST: postgresql
+      AUTHENTIK_POSTGRESQL__USER: user
+      AUTHENTIK_POSTGRESQL__NAME: myservice_db
+      AUTHENTIK_POSTGRESQL__PASSWORD: password
+      AUTHENTIK_SECRET_KEY: authentik_password
+    user: root
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - authentik_data:/var/lib/authentik
+      - authentik_certs:/certs
+    env_file:
+      - .env
+    depends_on:
+      postgresql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
   studio:
     image: supabase/studio:latest
     container_name: supabase-studio
     profiles: ["full"]
     depends_on:
-      postgres:
+      postgresql:
         condition: service_healthy
     environment:
       STUDIO_PG_META_URL: http://meta:8080
@@ -67,11 +139,11 @@ services:
     container_name: supabase-meta
     profiles: ["full"]
     depends_on:
-      postgres:
+      postgresql:
         condition: service_healthy
     environment:
       PG_META_PORT: 8080
-      PG_META_DB_HOST: postgres
+      PG_META_DB_HOST: postgresql
       PG_META_DB_PASSWORD: password
       PG_META_DB_PORT: 5432
       PG_META_DB_USER: user
@@ -79,86 +151,8 @@ services:
     ports:
       - "8080:8080"
       
-  authentik:
-    image: ghcr.io/goauthentik/server:latest
-    container_name: authentik
-    profiles: ["light", "full"]
-    restart: unless-stopped
-    command: server
-    depends_on:
-      authentik_redis:
-        condition: service_healthy
-      authentik_postgres:
-        condition: service_healthy
-    environment:
-      AUTHENTIK_REDIS__HOST: authentik_redis
-      AUTHENTIK_POSTGRESQL__HOST: authentik_postgres
-      AUTHENTIK_POSTGRESQL__USER: authentik
-      AUTHENTIK_POSTGRESQL__NAME: authentik
-      AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTHENTIK_POSTGRES_PASSWORD:-password}
-      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:-generate-a-secure-secret}
-    volumes:
-      - authentik_data:/var/lib/authentik
-      - authentik_certs:/certs
-    ports:
-      - "9000:9000"
-      - "9443:9443"
-
-  authentik_worker:
-    image: ghcr.io/goauthentik/server:latest
-    container_name: authentik_worker
-    profiles: ["light", "full"]
-    command: worker
-    user: root
-    depends_on:
-      authentik_redis:
-        condition: service_healthy
-      authentik_postgres:
-        condition: service_healthy
-    environment:
-      AUTHENTIK_REDIS__HOST: authentik_redis
-      AUTHENTIK_POSTGRESQL__HOST: authentik_postgres
-      AUTHENTIK_POSTGRESQL__USER: authentik
-      AUTHENTIK_POSTGRESQL__NAME: authentik
-      AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTHENTIK_POSTGRES_PASSWORD:-password}
-      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:-generate-a-secure-secret}
-    volumes:
-      - authentik_data:/var/lib/authentik
-      - authentik_certs:/certs
-
-  authentik_redis:
-    image: redis:alpine
-    container_name: authentik_redis
-    profiles: ["light", "full"]
-    command: --save 60 1 --loglevel warning
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-    volumes:
-      - authentik_redis_data:/data
-
-  authentik_postgres:
-    image: postgres:17-alpine
-    container_name: authentik_postgres
-    profiles: ["light", "full"]
-    environment:
-      POSTGRES_USER: authentik
-      POSTGRES_PASSWORD: ${AUTHENTIK_POSTGRES_PASSWORD:-password}
-      POSTGRES_DB: authentik
-    volumes:
-      - authentik_postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U authentik -d authentik"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
 volumes:
   postgres_data:
-  authentik_redis_data:
-  authentik_postgres_data:
+  redis_data:
   authentik_data:
   authentik_certs:

@@ -43,5 +43,5 @@ docker-build:
 docker-light:
 	cd .devcontainer && $(DOCKER_COMPOSE) --profile light up -d
 
-docker-full-with-dashboard:
+docker-full:
 	cd .devcontainer && $(DOCKER_COMPOSE) --profile full up -d
