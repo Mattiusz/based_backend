@@ -78,6 +78,87 @@ services:
       PG_META_DB_NAME: myservice_db
     ports:
       - "8080:8080"
+      
+  authentik:
+    image: ghcr.io/goauthentik/server:latest
+    container_name: authentik
+    profiles: ["light", "full"]
+    restart: unless-stopped
+    command: server
+    depends_on:
+      authentik_redis:
+        condition: service_healthy
+      authentik_postgres:
+        condition: service_healthy
+    environment:
+      AUTHENTIK_REDIS__HOST: authentik_redis
+      AUTHENTIK_POSTGRESQL__HOST: authentik_postgres
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTHENTIK_POSTGRES_PASSWORD:-password}
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:-generate-a-secure-secret}
+    volumes:
+      - authentik_data:/var/lib/authentik
+      - authentik_certs:/certs
+    ports:
+      - "9000:9000"
+      - "9443:9443"
+
+  authentik_worker:
+    image: ghcr.io/goauthentik/server:latest
+    container_name: authentik_worker
+    profiles: ["light", "full"]
+    command: worker
+    user: root
+    depends_on:
+      authentik_redis:
+        condition: service_healthy
+      authentik_postgres:
+        condition: service_healthy
+    environment:
+      AUTHENTIK_REDIS__HOST: authentik_redis
+      AUTHENTIK_POSTGRESQL__HOST: authentik_postgres
+      AUTHENTIK_POSTGRESQL__USER: authentik
+      AUTHENTIK_POSTGRESQL__NAME: authentik
+      AUTHENTIK_POSTGRESQL__PASSWORD: ${AUTHENTIK_POSTGRES_PASSWORD:-password}
+      AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:-generate-a-secure-secret}
+    volumes:
+      - authentik_data:/var/lib/authentik
+      - authentik_certs:/certs
+
+  authentik_redis:
+    image: redis:alpine
+    container_name: authentik_redis
+    profiles: ["light", "full"]
+    command: --save 60 1 --loglevel warning
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    volumes:
+      - authentik_redis_data:/data
+
+  authentik_postgres:
+    image: postgres:17-alpine
+    container_name: authentik_postgres
+    profiles: ["light", "full"]
+    environment:
+      POSTGRES_USER: authentik
+      POSTGRES_PASSWORD: ${AUTHENTIK_POSTGRES_PASSWORD:-password}
+      POSTGRES_DB: authentik
+    volumes:
+      - authentik_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U authentik -d authentik"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   postgres_data:
+  authentik_redis_data:
+  authentik_postgres_data:
+  authentik_data:
+  authentik_certs:
