@@ -50,6 +50,31 @@ func NewAuthService() (*AuthService, error) {
 	}, nil
 }
 
+func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.LoginResponse, error) {
+	data := url.Values{}
+	data.Set("username", req.Username)
+	data.Set("password", req.Password)
+	data.Set("email", req.Email)
+	data.Set("client_id", s.config.ClientID)
+	data.Set("client_secret", s.config.ClientSecret)
+
+	resp, err := s.httpClient.PostForm(s.config.AuthentikURL+"/users/register/", data)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "registration failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusCreated {
+		return nil, status.Errorf(codes.Internal, "registration failed with status %d", resp.StatusCode)
+	}
+
+	return &pb.LoginResponse{
+		AccessToken:  "TODO_GENERATE_TOKEN",
+		RefreshToken: "TODO_GENERATE_REFRESH_TOKEN",
+		ExpiresIn:    3600,
+	}, nil
+}
+
 func (s *AuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
 	switch auth := req.AuthMethod.(type) {
 	case *pb.LoginRequest_Password:
