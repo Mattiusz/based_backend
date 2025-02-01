@@ -12,5 +12,4 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-E
     
     -- Enable schema creation in public schema
     GRANT ALL ON SCHEMA public TO user;
-    ALTER USER user SET search_path = public;
 EOSQL

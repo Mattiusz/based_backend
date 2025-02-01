@@ -76,7 +76,9 @@ services:
       AUTHENTIK_POSTGRESQL__NAME: myservice_db
       AUTHENTIK_POSTGRESQL__PASSWORD: password
       AUTHENTIK_SECRET_KEY: authentik_password
-      PG_PASS: pg_password
+      AUTHENTIK_BOOTSTRAP_PASSWORD: your_chosen_password
+      AUTHENTIK_BOOTSTRAP_EMAIL: your_email@example.com
+
     volumes:
       - authentik_data:/var/lib/authentik
       - authentik_certs:/certs

@@ -33,14 +33,13 @@ func NewAuthService(config *config.Config) (*AuthService, error) {
 }
 
 func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.LoginResponse, error) {
-	data := url.Values{}
-	data.Set("username", req.Username)
-	data.Set("password", req.Password)
-	data.Set("email", req.Email)
-	data.Set("client_id", s.config.AuthentikClientID)
-	data.Set("client_secret", s.config.AuthentikClientSecret)
+	// First create the user
+	userData := url.Values{}
+	userData.Set("username", req.Username)
+	userData.Set("password", req.Password)
+	userData.Set("email", req.Email)
 
-	resp, err := s.httpClient.PostForm(s.config.AuthentikURL+"/users/register/", data)
+	resp, err := s.httpClient.PostForm(s.config.AuthentikURL+"/users/register/", userData)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "registration failed: %v", err)
 	}
@@ -50,10 +49,37 @@ func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*p
 		return nil, status.Errorf(codes.Internal, "registration failed with status %d", resp.StatusCode)
 	}
 
+	// Now get tokens for the new user
+	tokenData := url.Values{}
+	tokenData.Set("grant_type", "password")
+	tokenData.Set("username", req.Username)
+	tokenData.Set("password", req.Password)
+	tokenData.Set("client_id", s.config.AuthentikClientID)
+	tokenData.Set("client_secret", s.config.AuthentikClientSecret)
+
+	tokenResp, err := s.httpClient.PostForm(s.config.AuthentikURL+"/application/o/token/", tokenData)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get tokens: %v", err)
+	}
+	defer tokenResp.Body.Close()
+
+	if tokenResp.StatusCode != http.StatusOK {
+		return nil, status.Errorf(codes.Unauthenticated, "token fetch failed with status %d", tokenResp.StatusCode)
+	}
+
+	var tokenResult struct {
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+		ExpiresIn    int64  `json:"expires_in"`
+	}
+	if err := json.NewDecoder(tokenResp.Body).Decode(&tokenResult); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to decode token response: %v", err)
+	}
+
 	return &pb.LoginResponse{
-		AccessToken:  "TODO_GENERATE_TOKEN",
-		RefreshToken: "TODO_GENERATE_REFRESH_TOKEN",
-		ExpiresIn:    3600,
+		AccessToken:  tokenResult.AccessToken,
+		RefreshToken: tokenResult.RefreshToken,
+		ExpiresIn:    tokenResult.ExpiresIn,
 	}, nil
 }
 
@@ -62,7 +88,7 @@ func (s *AuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Logi
 	case *pb.LoginRequest_Password:
 		return s.handlePasswordLogin(ctx, auth.Password)
 	case *pb.LoginRequest_Sso:
-		return nil, status.Error(codes.Unimplemented, "SSO login not implemented")
+		return s.handleSSOLogin(ctx, auth.Sso)
 	default:
 		return nil, status.Error(codes.InvalidArgument, "invalid authentication method")
 	}
@@ -131,5 +157,53 @@ func (s *AuthService) ValidateToken(ctx context.Context, req *pb.ValidateTokenRe
 		Valid:  introspectResp.Active,
 		Claims: introspectResp.Claims,
 		UserId: introspectResp.Sub,
+	}, nil
+}
+
+func (s *AuthService) handleSSOLogin(ctx context.Context, sso *pb.SSOAuth) (*pb.LoginResponse, error) {
+	// Verify SSO provider is supported
+	switch sso.Provider {
+	case pb.Provider_GOOGLE, pb.Provider_APPLE:
+		// TODO: Implement proper OAuth2 validation
+	default:
+		return nil, status.Error(codes.InvalidArgument, "unsupported SSO provider")
+	}
+
+	// In production use proper OAuth2 client verification
+	// For now just do basic validation that token exists
+	if sso.IdToken == "" {
+		return nil, status.Error(codes.InvalidArgument, "missing ID token")
+	}
+
+	// Exchange ID token for access token
+	data := url.Values{}
+	data.Set("grant_type", "id_token")
+	data.Set("id_token", sso.IdToken)
+	data.Set("client_id", s.config.AuthentikClientID)
+	data.Set("client_secret", s.config.AuthentikClientSecret)
+
+	resp, err := s.httpClient.PostForm(s.config.AuthentikURL+"/application/o/token/", data)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "SSO login failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, status.Errorf(codes.Unauthenticated, "SSO login failed with status %d", resp.StatusCode)
+	}
+
+	var tokenResp struct {
+		AccessToken  string `json:"access_token"`
+		RefreshToken string `json:"refresh_token"`
+		ExpiresIn    int64  `json:"expires_in"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&tokenResp); err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to decode token response: %v", err)
+	}
+
+	return &pb.LoginResponse{
+		AccessToken:  tokenResp.AccessToken,
+		RefreshToken: tokenResp.RefreshToken,
+		ExpiresIn:    tokenResp.ExpiresIn,
 	}, nil
 }
