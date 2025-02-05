@@ -14,6 +14,7 @@ import (
 	"github.com/mattiusz/based_backend/internal/db"
 	v1 "github.com/mattiusz/based_backend/internal/gen/proto"
 	"github.com/mattiusz/based_backend/internal/gen/sqlc"
+	"github.com/mattiusz/based_backend/internal/interceptors"
 	repository "github.com/mattiusz/based_backend/internal/repositories"
 	"github.com/mattiusz/based_backend/internal/services"
 )
@@ -52,6 +53,7 @@ func main() {
 
 	// Initialize keycloack client
 	authService, err := services.NewAuthService(cfg)
+	authInterceptor := interceptors.NewAuthInterceptor(authService)
 	if err != nil {
 		log.Fatalf("failed to create auth service: %v", err)
 	}
@@ -64,9 +66,11 @@ func main() {
 	// Initialize gRPC server
 	grpcServer := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
+			authInterceptor.Unary(),
 			recovery.UnaryServerInterceptor(recovery.WithRecoveryHandler(grpcPanicRecoveryHandler)),
 		),
 		grpc.ChainStreamInterceptor(
+			authInterceptor.Stream(),
 			recovery.StreamServerInterceptor(recovery.WithRecoveryHandler(grpcPanicRecoveryHandler)),
 		),
 	)

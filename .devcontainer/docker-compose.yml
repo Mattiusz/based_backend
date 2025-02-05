@@ -19,7 +19,7 @@ services:
       - DB_PORT=5432
       - KEYCLOAK_HOST=keycloak
       - KEYCLOAK_PORT=8080
-      - KEYCLOAK_REALM=myrealm
+      - KEYCLOAK_REALM=master
       - KEYCLOAK_CLIENT_ID=myclient
       - KEYCLOAK_CLIENT_SECRET=your-client-secret
     ports:

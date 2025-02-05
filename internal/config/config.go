@@ -98,17 +98,17 @@ func LoadConfig() (*Config, error) {
 
 	keycloakRealm := os.Getenv("KEYCLOAK_REALM")
 	if keycloakRealm == "" {
-		keycloakRealm = "myrealm" // default realm
+		keycloakRealm = "master" // default realm
 	}
 
 	keycloakClientID := os.Getenv("KEYCLOAK_CLIENT_ID")
 	if keycloakClientID == "" {
-		return nil, fmt.Errorf("KEYCLOAK_CLIENT_ID environment variable is required")
+		keycloakClientID = "myclient" // default client ID
 	}
 
 	keycloakClientSecret := os.Getenv("KEYCLOAK_CLIENT_SECRET")
 	if keycloakClientSecret == "" {
-		return nil, fmt.Errorf("KEYCLOAK_CLIENT_SECRET environment variable is required")
+		keycloakClientSecret = "your-client-secret"
 	}
 
 	return &Config{
