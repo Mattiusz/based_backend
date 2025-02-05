@@ -16,12 +16,6 @@ services:
         - DB_PASSWORD=password
         - DB_NAME=myservice_db
         - DB_PORT=5432
-        - AUTHENTIK_URL=http://authentik:9000
-        - AUTHENTIK_REDIRECT_URL=http://localhost:50051/auth/callback
-        - AUTHENTIK_TOKEN_ENDPOINT=http://authentik:9000/application/o/token/
-        - AUTHENTIK_USER_INFO_ENDPOINT=http://authentik:9000/application/o/userinfo/
-      env_file:
-      - .env
       ports:
         - "50051:50051"
       healthcheck:
@@ -65,58 +59,6 @@ services:
     volumes:
       - redis_data:/data
 
-  authentik:
-    image: ghcr.io/goauthentik/server:latest
-    restart: unless-stopped
-    command: server
-    environment:
-      AUTHENTIK_REDIS__HOST: redis
-      AUTHENTIK_POSTGRESQL__HOST: postgresql
-      AUTHENTIK_POSTGRESQL__USER: user
-      AUTHENTIK_POSTGRESQL__NAME: myservice_db
-      AUTHENTIK_POSTGRESQL__PASSWORD: password
-      AUTHENTIK_SECRET_KEY: authentik_password
-      AUTHENTIK_BOOTSTRAP_PASSWORD: your_chosen_password
-      AUTHENTIK_BOOTSTRAP_EMAIL: your_email@example.com
-
-    volumes:
-      - authentik_data:/var/lib/authentik
-      - authentik_certs:/certs
-    env_file:
-      - .env
-    ports:
-      - "${COMPOSE_PORT_HTTP:-9000}:9000"
-      - "${COMPOSE_PORT_HTTPS:-9443}:9443"
-    depends_on:
-      postgresql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
-  worker:
-    image: ghcr.io/goauthentik/server:latest
-    restart: unless-stopped
-    command: worker
-    environment:
-      AUTHENTIK_REDIS__HOST: redis
-      AUTHENTIK_POSTGRESQL__HOST: postgresql
-      AUTHENTIK_POSTGRESQL__USER: user
-      AUTHENTIK_POSTGRESQL__NAME: myservice_db
-      AUTHENTIK_POSTGRESQL__PASSWORD: password
-      AUTHENTIK_SECRET_KEY: authentik_password
-    user: root
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-      - authentik_data:/var/lib/authentik
-      - authentik_certs:/certs
-    env_file:
-      - .env
-    depends_on:
-      postgresql:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-
   studio:
     image: supabase/studio:latest
     container_name: supabase-studio
@@ -156,5 +98,3 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  authentik_data:
-  authentik_certs:
