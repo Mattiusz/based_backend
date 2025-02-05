@@ -50,7 +50,13 @@ func main() {
 	chatRepo := repository.NewChatRepository(queries)
 	eventRepo := repository.NewEventRepository(queries)
 
-	// Initialite services
+	// Initialize keycloack client
+	authService, err := services.NewAuthService(cfg)
+	if err != nil {
+		log.Fatalf("failed to create auth service: %v", err)
+	}
+
+	// Initialite grpc services
 	userService := services.NewUserService(userRepo)
 	chatService := services.NewChatService(chatRepo)
 	eventService := services.NewEventService(eventRepo)

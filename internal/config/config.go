@@ -8,15 +8,20 @@ import (
 )
 
 type Config struct {
-	DatabasePort        string
-	DatabaseHost        string
-	DatabaseUser        string
-	DatabasePassword    string
-	DatabaseName        string
-	GRPCPort            string
-	MaxPoolConns        int32
-	MaxConnLifetimeMins time.Duration
-	MigrationsDir       string
+	DatabasePort         string
+	DatabaseHost         string
+	DatabaseUser         string
+	DatabasePassword     string
+	DatabaseName         string
+	GRPCPort             string
+	MaxPoolConns         int32
+	MaxConnLifetimeMins  time.Duration
+	MigrationsDir        string
+	KeycloakHost         string
+	KeycloakPort         string
+	KeycloakRealm        string
+	KeycloakClientID     string
+	KeycloakClientSecret string
 }
 
 // LoadConfig retrieves and loads environment variables into the Config structure.
@@ -81,15 +86,45 @@ func LoadConfig() (*Config, error) {
 		}
 	}
 
+	keycloakHost := os.Getenv("KEYCLOAK_HOST")
+	if keycloakHost == "" {
+		keycloakHost = "localhost" // default host
+	}
+
+	keycloakPort := os.Getenv("KEYCLOAK_PORT")
+	if keycloakPort == "" {
+		keycloakPort = "8080" // default port
+	}
+
+	keycloakRealm := os.Getenv("KEYCLOAK_REALM")
+	if keycloakRealm == "" {
+		keycloakRealm = "myrealm" // default realm
+	}
+
+	keycloakClientID := os.Getenv("KEYCLOAK_CLIENT_ID")
+	if keycloakClientID == "" {
+		return nil, fmt.Errorf("KEYCLOAK_CLIENT_ID environment variable is required")
+	}
+
+	keycloakClientSecret := os.Getenv("KEYCLOAK_CLIENT_SECRET")
+	if keycloakClientSecret == "" {
+		return nil, fmt.Errorf("KEYCLOAK_CLIENT_SECRET environment variable is required")
+	}
+
 	return &Config{
-		DatabasePort:        dbPort,
-		DatabaseHost:        dbHost,
-		DatabaseUser:        dbUser,
-		DatabasePassword:    dbPassword,
-		DatabaseName:        dbName,
-		GRPCPort:            grpcPort,
-		MaxPoolConns:        maxPoolConns,
-		MaxConnLifetimeMins: maxConnLifetime,
-		MigrationsDir:       migrationsDir,
+		DatabasePort:         dbPort,
+		DatabaseHost:         dbHost,
+		DatabaseUser:         dbUser,
+		DatabasePassword:     dbPassword,
+		DatabaseName:         dbName,
+		GRPCPort:             grpcPort,
+		MaxPoolConns:         maxPoolConns,
+		MaxConnLifetimeMins:  maxConnLifetime,
+		MigrationsDir:        migrationsDir,
+		KeycloakHost:         keycloakHost,
+		KeycloakPort:         keycloakPort,
+		KeycloakRealm:        keycloakRealm,
+		KeycloakClientID:     keycloakClientID,
+		KeycloakClientSecret: keycloakClientSecret,
 	}, nil
 }

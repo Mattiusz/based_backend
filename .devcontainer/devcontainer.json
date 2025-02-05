@@ -12,6 +12,6 @@
             "GO111MODULE": "on"
         }
     },
-    "postCreateCommand": "make dev",
+    "postCreateCommand": "make build",
     "remoteUser": "root"
 }
