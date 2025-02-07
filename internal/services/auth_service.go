@@ -114,7 +114,7 @@ func (s *AuthService) VerifyToken(ctx context.Context, tokenString string) (*jwt
 
 // fetchPublicKeys retrieves the public keys from Keycloak
 func (s *AuthService) fetchPublicKeys() error {
-	url := fmt.Sprintf("http://%s:%s/realms/%s/protocol/openid-connect/certs",
+	url := fmt.Sprintf("http://%s:%s/realms/%s",
 		s.config.KeycloakHost,
 		s.config.KeycloakPort,
 		s.config.KeycloakRealm)

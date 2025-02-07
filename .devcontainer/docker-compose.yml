@@ -19,7 +19,7 @@ services:
       - DB_PORT=5432
       - KEYCLOAK_HOST=keycloak
       - KEYCLOAK_PORT=8080
-      - KEYCLOAK_REALM=master
+      - KEYCLOAK_REALM=based
       - KEYCLOAK_CLIENT_ID=go-backend
       - KEYCLOAK_CLIENT_SECRET=MgNojRL634XmFPquvQpsoBM1Gg22XBKr
     ports:
