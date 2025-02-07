@@ -20,8 +20,8 @@ services:
       - KEYCLOAK_HOST=keycloak
       - KEYCLOAK_PORT=8080
       - KEYCLOAK_REALM=master
-      - KEYCLOAK_CLIENT_ID=myclient
-      - KEYCLOAK_CLIENT_SECRET=your-client-secret
+      - KEYCLOAK_CLIENT_ID=go-backend
+      - KEYCLOAK_CLIENT_SECRET=MgNojRL634XmFPquvQpsoBM1Gg22XBKr
     ports:
       - "50051:50051"
     healthcheck:
