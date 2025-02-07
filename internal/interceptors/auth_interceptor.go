@@ -140,6 +140,14 @@ func (i *AuthInterceptor) extractToken(ctx context.Context) (string, error) {
 	return strings.TrimPrefix(token, "Bearer "), nil
 }
 
+func GetUserIDFromContext(ctx context.Context) (string, error) {
+	userID, ok := ctx.Value(userIDKey).(string)
+	if !ok {
+		return "", status.Error(codes.Unauthenticated, "user ID not found in context")
+	}
+	return userID, nil
+}
+
 // wrappedServerStream wraps grpc.ServerStream to modify the context
 type wrappedServerStream struct {
 	grpc.ServerStream

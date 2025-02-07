@@ -4,13 +4,15 @@ import (
 	"context"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	pb "github.com/mattiusz/based_backend/internal/gen/proto"
-	"github.com/mattiusz/based_backend/internal/gen/sqlc"
-	"github.com/mattiusz/based_backend/internal/repositories"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
+
+	pb "github.com/mattiusz/based_backend/internal/gen/proto"
+	"github.com/mattiusz/based_backend/internal/gen/sqlc"
+	"github.com/mattiusz/based_backend/internal/interceptors"
+	"github.com/mattiusz/based_backend/internal/repositories"
 )
 
 type eventService struct {
@@ -19,12 +21,15 @@ type eventService struct {
 }
 
 func NewEventService(repo repositories.EventRepository) pb.EventServiceServer {
-	return &eventService{
-		eventRepo: repo,
-	}
+	return &eventService{eventRepo: repo}
 }
 
 func (s *eventService) CreateEvent(ctx context.Context, req *pb.CreateEventRequest) (*pb.Event, error) {
+	authenticatedUserID, err := interceptors.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	if err := validateCreateEventRequest(req); err != nil {
 		return nil, err
 	}
@@ -35,7 +40,7 @@ func (s *eventService) CreateEvent(ctx context.Context, req *pb.CreateEventReque
 	}
 
 	params := &sqlc.CreateEventParams{
-		CreatorID:     convertUUID(req.CreatorId),
+		CreatorID:     convertUUID([]byte(authenticatedUserID)),
 		Name:          req.Name,
 		StMakepoint:   req.Location.Latitude,
 		StMakepoint_2: req.Location.Longitude,
@@ -53,83 +58,32 @@ func (s *eventService) CreateEvent(ctx context.Context, req *pb.CreateEventReque
 		AllowDiverse:  req.AllowDiverse,
 	}
 
-	created_event, err := s.eventRepo.CreateEvent(ctx, params)
+	createdEvent, err := s.eventRepo.CreateEvent(ctx, params)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to create event: %v", err)
 	}
 
-	if _, err := s.JoinEvent(ctx, &pb.JoinEventRequest{
-		EventId: created_event.EventID.Bytes[:],
-		UserId:  created_event.CreatorID.Bytes[:],
-	}); err != nil {
+	joinParams := &sqlc.JoinEventParams{
+		EventID: createdEvent.EventID,
+		UserID:  convertUUID([]byte(authenticatedUserID)),
+	}
+
+	if err := s.eventRepo.JoinEvent(ctx, joinParams); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to join event: %v", err)
 	}
 
-	return convertCreateEventResponseToEvent(created_event), nil
-}
-
-func (s *eventService) GetEventByID(ctx context.Context, req *pb.GetEventByIDRequest) (*pb.Event, error) {
-	if len(req.EventId) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "event_id is required")
-	}
-
-	eventID := convertUUID(req.EventId)
-	event, err := s.eventRepo.GetEventByID(ctx, eventID)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get event: %v", err)
-	}
-
-	return convertGetEventByIdResponseToEvent(*event), nil
-}
-
-func (s *eventService) GetNearbyEvents(ctx context.Context, req *pb.GetNearbyEventsRequest) (*pb.GetNearbyEventsResponse, error) {
-	if req.Location == nil {
-		return nil, status.Error(codes.InvalidArgument, "location is required")
-	}
-
-	params := &sqlc.GetNearbyEventsByStatusAndGenderParams{
-		StMakepoint:   req.Location.Latitude,
-		StMakepoint_2: req.Location.Longitude,
-		Column5:       convertPBGenderToSQL(req.Gender),
-		Status:        sqlc.EventStatusTypeUpcoming,
-		StDwithin:     req.RadiusMeters,
-		Limit:         req.Limit,
-	}
-
-	events, err := s.eventRepo.GetNearbyEvents(ctx, params)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get nearby events: %v", err)
-	}
-
-	return convertGetNearbyEventsResponseToProto(events), nil
-}
-
-func (s *eventService) GetUserEvents(ctx context.Context, req *pb.GetUserEventsRequest) (*pb.GetUserEventsResponse, error) {
-	if len(req.UserId) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "user_id is required")
-	}
-
-	userID := convertUUID(req.UserId)
-	events, err := s.eventRepo.GetUserEvents(ctx,
-		&sqlc.GetUserEventsParams{
-			UserID: userID,
-			Limit:  req.Limit,
-		})
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get user events: %v", err)
-	}
-
-	return convertGetUserEventsResponseToEvent(events), nil
+	return convertCreateEventResponseToEvent(createdEvent), nil
 }
 
 func (s *eventService) JoinEvent(ctx context.Context, req *pb.JoinEventRequest) (*emptypb.Empty, error) {
-	if len(req.EventId) == 0 || len(req.UserId) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "event_id and user_id are required")
+	authenticatedUserID, err := interceptors.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	params := &sqlc.JoinEventParams{
 		EventID: convertUUID(req.EventId),
-		UserID:  convertUUID(req.UserId),
+		UserID:  convertUUID([]byte(authenticatedUserID)),
 	}
 
 	if err := s.eventRepo.JoinEvent(ctx, params); err != nil {
@@ -140,13 +94,14 @@ func (s *eventService) JoinEvent(ctx context.Context, req *pb.JoinEventRequest) 
 }
 
 func (s *eventService) LeaveEvent(ctx context.Context, req *pb.LeaveEventRequest) (*emptypb.Empty, error) {
-	if len(req.EventId) == 0 || len(req.UserId) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "event_id and user_id are required")
+	authenticatedUserID, err := interceptors.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	params := &sqlc.LeaveEventParams{
 		EventID: convertUUID(req.EventId),
-		UserID:  convertUUID(req.UserId),
+		UserID:  convertUUID([]byte(authenticatedUserID)),
 	}
 
 	if err := s.eventRepo.LeaveEvent(ctx, params); err != nil {
@@ -157,13 +112,14 @@ func (s *eventService) LeaveEvent(ctx context.Context, req *pb.LeaveEventRequest
 }
 
 func (s *eventService) DeleteEvent(ctx context.Context, req *pb.DeleteEventRequest) (*emptypb.Empty, error) {
-	if len(req.EventId) == 0 || len(req.UserId) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "event_id and user_id are required")
+	authenticatedUserID, err := interceptors.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
 	}
 
 	params := &sqlc.DeleteEventParams{
 		EventID:   convertUUID(req.EventId),
-		CreatorID: convertUUID(req.UserId),
+		CreatorID: convertUUID([]byte(authenticatedUserID)),
 	}
 
 	if err := s.eventRepo.DeleteEvent(ctx, params); err != nil {
@@ -173,30 +129,7 @@ func (s *eventService) DeleteEvent(ctx context.Context, req *pb.DeleteEventReque
 	return &emptypb.Empty{}, nil
 }
 
-func (s *eventService) GetEventAttendeeStats(ctx context.Context, req *pb.GetEventAttendeeStatsRequest) (*pb.EventAttendeeStats, error) {
-	if len(req.EventId) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "event_id is required")
-	}
-
-	eventId := convertUUID(req.EventId)
-	stats, err := s.eventRepo.GetEventAttendeeStats(ctx, eventId)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get attendee stats: %v", err)
-	}
-
-	return &pb.EventAttendeeStats{
-		FemaleCount:  stats.FemaleCount,
-		MaleCount:    stats.MaleCount,
-		DiverseCount: stats.DiverseCount,
-	}, nil
-}
-
-// Helper functions for request validation and data conversion
-
 func validateCreateEventRequest(req *pb.CreateEventRequest) error {
-	if len(req.CreatorId) == 0 {
-		return status.Error(codes.InvalidArgument, "creator_id is required")
-	}
 	if req.Name == "" {
 		return status.Error(codes.InvalidArgument, "name is required")
 	}

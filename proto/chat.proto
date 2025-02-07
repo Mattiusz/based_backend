@@ -32,7 +32,7 @@ enum MessageType {
 message Message {
   bytes message_id = 1;
   bytes event_id = 2;
-  bytes user_id = 3;
+  bytes sender_id = 3;
   google.protobuf.Timestamp created_at = 4;
   string content = 5;
   MessageStatus status = 6;
@@ -43,14 +43,12 @@ message Message {
 
 message CreateMessageRequest {
   bytes event_id = 1;
-  bytes user_id = 2;
-  string content = 3;
-  MessageType type = 4;
+  string content = 2;
+  MessageType type = 3;
 }
 
 message GetMessagesRequest {
   bytes event_id = 1;
-  bytes user_id = 2;
 }
 
 message GetMessagesResponse {
@@ -59,21 +57,17 @@ message GetMessagesResponse {
 
 message LikeMessageRequest {
   bytes message_id = 1;
-  bytes user_id = 2;
 }
 
 message UnlikeMessageRequest {
   bytes message_id = 1;
-  bytes user_id = 2;
 }
 
 message DeleteMessageRequest {
   bytes message_id = 1;
-  bytes user_id = 2;
-  bytes event_id = 3;
+  bytes event_id = 2;
 }
 
 message StreamMessagesRequest {
   bytes event_id = 1;
-  bytes user_id = 2;
 }

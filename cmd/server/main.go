@@ -53,10 +53,10 @@ func main() {
 
 	// Initialize keycloack client
 	authService, err := services.NewAuthService(cfg)
-	authInterceptor := interceptors.NewAuthInterceptor(authService)
 	if err != nil {
 		log.Fatalf("failed to create auth service: %v", err)
 	}
+	authInterceptor := interceptors.NewAuthInterceptor(authService)
 
 	// Initialite grpc services
 	userService := services.NewUserService(userRepo)

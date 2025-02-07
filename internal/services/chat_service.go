@@ -12,6 +12,7 @@ import (
 
 	pb "github.com/mattiusz/based_backend/internal/gen/proto"
 	"github.com/mattiusz/based_backend/internal/gen/sqlc"
+	"github.com/mattiusz/based_backend/internal/interceptors"
 	"github.com/mattiusz/based_backend/internal/repositories"
 )
 
@@ -34,19 +35,23 @@ func NewChatService(repo repositories.ChatRepository) pb.ChatServiceServer {
 	service := &chatService{
 		chatRepo: repo,
 	}
-	// Start cleanup goroutine for inactive subscribers
 	go service.cleanupInactiveSubscribers()
 	return service
 }
 
 func (s *chatService) CreateMessage(ctx context.Context, req *pb.CreateMessageRequest) (*pb.Message, error) {
-	if len(req.EventId) == 0 || len(req.UserId) == 0 || req.Content == "" {
-		return nil, status.Error(codes.InvalidArgument, "event_id, user_id, and comment are required")
+	authenticatedUserID, err := interceptors.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(req.EventId) == 0 || len(authenticatedUserID) == 0 || req.Content == "" {
+		return nil, status.Error(codes.InvalidArgument, "event_id, user_id, and content are required")
 	}
 
 	params := &sqlc.CreateChatMessageParams{
 		EventID: convertUUID(req.EventId),
-		UserID:  convertUUID(req.UserId),
+		UserID:  convertUUID([]byte(authenticatedUserID)),
 		Content: req.Content,
 		Type:    convertPbMessageTypeToSQL(req.Type),
 	}
@@ -56,28 +61,33 @@ func (s *chatService) CreateMessage(ctx context.Context, req *pb.CreateMessageRe
 		return nil, status.Errorf(codes.Internal, "failed to create message: %v", err)
 	}
 
-	pb_msg := &pb.Message{
+	pbMsg := &pb.Message{
 		MessageId: msg.MessageID.Bytes[:],
 		EventId:   msg.EventID.Bytes[:],
-		UserId:    msg.UserID.Bytes[:],
+		SenderId:  msg.UserID.Bytes[:],
 		CreatedAt: timestamppb.New(msg.CreatedAt.Time),
 		Content:   msg.Content,
 		Status:    convertSQLMessageStatusToPB(msg.Status),
 		Type:      convertSQLMessageTypeToPB(msg.Type),
 	}
 
-	s.broadcastMessage(pb_msg)
-	return pb_msg, nil
+	s.broadcastMessage(pbMsg)
+	return pbMsg, nil
 }
 
 func (s *chatService) GetMessages(ctx context.Context, req *pb.GetMessagesRequest) (*pb.GetMessagesResponse, error) {
-	if len(req.EventId) == 0 || len(req.UserId) == 0 {
+	authenticatedUserID, err := interceptors.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(req.EventId) == 0 || len(authenticatedUserID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "event_id and user_id are required")
 	}
 
 	params := &sqlc.GetEventMessagesParams{
 		EventID: convertUUID(req.EventId),
-		UserID:  convertUUID(req.UserId),
+		UserID:  convertUUID([]byte(authenticatedUserID)),
 	}
 
 	messages, err := s.chatRepo.GetEventMessages(ctx, params)
@@ -90,16 +100,15 @@ func (s *chatService) GetMessages(ctx context.Context, req *pb.GetMessagesReques
 	}
 
 	for i, msg := range messages {
-		numberOfLikes := int32(msg.NumberOfLikes)
 		response.Messages[i] = &pb.Message{
 			MessageId:     msg.MessageID.Bytes[:],
 			EventId:       msg.EventID.Bytes[:],
-			UserId:        msg.UserID.Bytes[:],
+			SenderId:      msg.UserID.Bytes[:],
 			Content:       msg.Content,
 			CreatedAt:     timestamppb.New(msg.CreatedAt.Time),
 			Status:        convertSQLMessageStatusToPB(msg.Status),
 			Type:          convertSQLMessageTypeToPB(msg.Type),
-			NumberOfLikes: numberOfLikes,
+			NumberOfLikes: int32(msg.NumberOfLikes),
 			IsLikedByUser: msg.IsLikedByUser,
 		}
 	}
@@ -108,13 +117,18 @@ func (s *chatService) GetMessages(ctx context.Context, req *pb.GetMessagesReques
 }
 
 func (s *chatService) LikeMessage(ctx context.Context, req *pb.LikeMessageRequest) (*emptypb.Empty, error) {
-	if len(req.MessageId) == 0 || len(req.UserId) == 0 {
+	authenticatedUserID, err := interceptors.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(req.MessageId) == 0 || len(authenticatedUserID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "message_id and user_id are required")
 	}
 
 	params := &sqlc.LikeMessageParams{
 		MessageID: convertUUID(req.MessageId),
-		UserID:    convertUUID(req.UserId),
+		UserID:    convertUUID([]byte(authenticatedUserID)),
 	}
 
 	if err := s.chatRepo.LikeMessage(ctx, params); err != nil {
@@ -125,13 +139,18 @@ func (s *chatService) LikeMessage(ctx context.Context, req *pb.LikeMessageReques
 }
 
 func (s *chatService) UnlikeMessage(ctx context.Context, req *pb.UnlikeMessageRequest) (*emptypb.Empty, error) {
-	if len(req.MessageId) == 0 || len(req.UserId) == 0 {
+	authenticatedUserID, err := interceptors.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(req.MessageId) == 0 || len(authenticatedUserID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "message_id and user_id are required")
 	}
 
 	params := &sqlc.UnlikeMessageParams{
 		MessageID: convertUUID(req.MessageId),
-		UserID:    convertUUID(req.UserId),
+		UserID:    convertUUID([]byte(authenticatedUserID)),
 	}
 
 	if err := s.chatRepo.UnlikeMessage(ctx, params); err != nil {
@@ -142,13 +161,18 @@ func (s *chatService) UnlikeMessage(ctx context.Context, req *pb.UnlikeMessageRe
 }
 
 func (s *chatService) DeleteMesssage(ctx context.Context, req *pb.DeleteMessageRequest) (*emptypb.Empty, error) {
-	if len(req.MessageId) == 0 || len(req.UserId) == 0 {
+	authenticatedUserID, err := interceptors.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(req.MessageId) == 0 || len(authenticatedUserID) == 0 {
 		return nil, status.Error(codes.InvalidArgument, "message_id and user_id are required")
 	}
 
 	params := &sqlc.DeleteChatMessageParams{
 		MessageID: convertUUID(req.MessageId),
-		UserID:    convertUUID(req.UserId),
+		UserID:    convertUUID([]byte(authenticatedUserID)),
 	}
 
 	if err := s.chatRepo.DeleteMesssage(ctx, params); err != nil {
@@ -159,46 +183,46 @@ func (s *chatService) DeleteMesssage(ctx context.Context, req *pb.DeleteMessageR
 }
 
 func (s *chatService) StreamMessages(req *pb.StreamMessagesRequest, stream pb.ChatService_StreamMessagesServer) error {
-	if len(req.EventId) == 0 || len(req.UserId) == 0 {
+	authenticatedUserID, err := interceptors.GetUserIDFromContext(stream.Context())
+	if err != nil {
+		return err
+	}
+
+	if len(req.EventId) == 0 || len(authenticatedUserID) == 0 {
 		return status.Error(codes.InvalidArgument, "event_id and user_id are required")
 	}
 
-	// Create a new subscriber
 	sub := &subscriber{
 		eventID:   req.EventId,
-		userID:    req.UserId,
-		messages:  make(chan *pb.Message, 100), // Buffer size of 100
+		userID:    []byte(authenticatedUserID),
+		messages:  make(chan *pb.Message, 100),
 		done:      make(chan struct{}),
 		createdAt: time.Now(),
 	}
 
-	// Add subscriber to the map
 	s.addSubscriber(req.EventId, sub)
 	defer s.removeSubscriber(req.EventId, sub)
 
-	// Fetch existing messages
 	params := &sqlc.GetEventMessagesParams{
 		EventID: convertUUID(req.EventId),
-		UserID:  convertUUID(req.UserId),
+		UserID:  convertUUID([]byte(authenticatedUserID)),
 	}
 
-	messages, err := s.chatRepo.GetEventMessages(context.Background(), params)
+	messages, err := s.chatRepo.GetEventMessages(stream.Context(), params)
 	if err != nil {
 		return status.Errorf(codes.Internal, "failed to get messages: %v", err)
 	}
 
-	// Send existing messages
 	for _, msg := range messages {
-		numberOfLikes := int32(msg.NumberOfLikes)
 		pbMsg := &pb.Message{
 			MessageId:     msg.MessageID.Bytes[:],
 			EventId:       msg.EventID.Bytes[:],
-			UserId:        msg.UserID.Bytes[:],
+			SenderId:      msg.UserID.Bytes[:],
 			Content:       msg.Content,
 			CreatedAt:     timestamppb.New(msg.CreatedAt.Time),
 			Status:        convertSQLMessageStatusToPB(msg.Status),
 			Type:          convertSQLMessageTypeToPB(msg.Type),
-			NumberOfLikes: numberOfLikes,
+			NumberOfLikes: int32(msg.NumberOfLikes),
 			IsLikedByUser: msg.IsLikedByUser,
 		}
 		if err := stream.Send(pbMsg); err != nil {
@@ -206,7 +230,6 @@ func (s *chatService) StreamMessages(req *pb.StreamMessagesRequest, stream pb.Ch
 		}
 	}
 
-	// Start streaming new messages
 	for {
 		select {
 		case <-stream.Context().Done():

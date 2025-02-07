@@ -73,21 +73,20 @@ enum EventCategory {
 }
 
 message CreateEventRequest {
-  bytes creator_id = 1;
-  string name = 2;
-  Location location = 3;
-  google.protobuf.Timestamp datetime = 4;
-  int32 timezone = 5;
-  int32 max_attendees = 6;
-  string venue = 7;
-  string description = 8;
-  repeated EventCategory categories = 9;
-  int32 age_range_min = 10;
-  int32 age_range_max = 11;
-  bool allow_female = 12;
-  bool allow_male = 13;
-  bool allow_diverse = 14;
-  bytes thumbnail = 15;
+  string name = 1;
+  Location location = 2;
+  google.protobuf.Timestamp datetime = 3;
+  int32 timezone = 4;
+  int32 max_attendees = 5;
+  string venue = 6;
+  string description = 7;
+  repeated EventCategory categories = 8;
+  int32 age_range_min = 9;
+  int32 age_range_max = 10;
+  bool allow_female = 11;
+  bool allow_male = 12;
+  bool allow_diverse = 13;
+  bytes thumbnail = 14;
 }
 
 message GetEventByIDRequest {
@@ -112,8 +111,7 @@ message GetNearbyEventsResponse {
 }
 
 message GetUserEventsRequest {
-  bytes user_id = 1;
-  int32 limit = 2;
+  int32 limit = 1;
 }
 
 message GetUserEventsResponse {
@@ -122,12 +120,10 @@ message GetUserEventsResponse {
 
 message JoinEventRequest {
   bytes event_id = 1;
-  bytes user_id = 2;
 }
 
 message LeaveEventRequest {
   bytes event_id = 1;
-  bytes user_id = 2;
 }
 
 message UpdateEventRequest {
@@ -145,7 +141,6 @@ message UpdateEventRequest {
 
 message DeleteEventRequest {
   bytes event_id = 1;
-  bytes user_id = 2;
 }
 
 message GetEventAttendeeStatsRequest {

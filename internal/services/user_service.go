@@ -11,6 +11,7 @@ import (
 
 	pb "github.com/mattiusz/based_backend/internal/gen/proto"
 	"github.com/mattiusz/based_backend/internal/gen/sqlc"
+	"github.com/mattiusz/based_backend/internal/interceptors"
 	"github.com/mattiusz/based_backend/internal/repositories"
 )
 
@@ -23,41 +24,13 @@ func NewUserService(repo repositories.UserRepository) pb.UserServiceServer {
 	return &userService{userRepo: repo}
 }
 
-func (s *userService) CreateUser(ctx context.Context, req *pb.CreateUserRequest) (*pb.User, error) {
-	if req.DisplayName == "" || req.Birthday == nil {
-		return nil, status.Error(codes.InvalidArgument, "name is required")
-	}
-
-	gender := convertPBGenderToSQL(req.Gender)
-
-	params := &sqlc.CreateUserParams{
-		Name:     req.DisplayName,
-		Birthday: pgtype.Date{Time: req.Birthday.AsTime(), Valid: req.Birthday != nil},
-		Gender:   gender,
-	}
-
-	user, err := s.userRepo.CreateUser(ctx, params)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to create user: %v", err)
-	}
-
-	return &pb.User{
-		UserId:      user.UserID.Bytes[:],
-		DisplayName: user.Name,
-		Birthday:    timestamppb.New(user.Birthday.Time),
-		Gender:      convertSQLGenderToPB(user.Gender),
-	}, nil
-}
-
 func (s *userService) UpdateUser(ctx context.Context, req *pb.UpdateUserRequest) (*pb.User, error) {
-	if len(req.UserId) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "user_id is required")
+	authenticatedUserID, err := interceptors.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	userID := pgtype.UUID{
-		Bytes: [16]byte(req.UserId),
-		Valid: true,
-	}
+	userID := convertUUID([]byte(authenticatedUserID))
 
 	user, err := s.userRepo.GetUserByID(ctx, userID)
 	if err != nil {
@@ -71,16 +44,15 @@ func (s *userService) UpdateUser(ctx context.Context, req *pb.UpdateUserRequest)
 		Gender:   user.Gender,
 	}
 
-	updated_user, err := s.userRepo.UpdateUser(ctx, params)
+	updatedUser, err := s.userRepo.UpdateUser(ctx, params)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to update user: %v", err)
 	}
 
 	return &pb.User{
-		UserId:      updated_user.UserID.Bytes[:],
-		DisplayName: updated_user.Name,
-		Birthday:    timestamppb.New(updated_user.Birthday.Time),
-		Gender:      convertSQLGenderToPB(updated_user.Gender),
+		DisplayName: updatedUser.Name,
+		Birthday:    timestamppb.New(updatedUser.Birthday.Time),
+		Gender:      convertSQLGenderToPB(updatedUser.Gender),
 	}, nil
 }
 
@@ -100,22 +72,19 @@ func (s *userService) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.
 	}
 
 	return &pb.User{
-		UserId:      user.UserID.Bytes[:],
 		DisplayName: user.Name,
 		Birthday:    timestamppb.New(user.Birthday.Time),
 		Gender:      convertSQLGenderToPB(user.Gender),
 	}, nil
 }
 
-func (s *userService) DeleteUser(ctx context.Context, req *pb.DeleteUserRequest) (*emptypb.Empty, error) {
-	if len(req.UserId) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "user_id is required")
+func (s *userService) DeleteUser(ctx context.Context, _ *emptypb.Empty) (*emptypb.Empty, error) {
+	authenticatedUserID, err := interceptors.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	userID := pgtype.UUID{
-		Bytes: [16]byte(req.UserId),
-		Valid: true,
-	}
+	userID := convertUUID([]byte(authenticatedUserID))
 
 	if err := s.userRepo.DeleteUser(ctx, userID); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete user: %v", err)
