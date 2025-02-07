@@ -16,9 +16,15 @@ type AuthService interface {
 }
 
 // AuthInterceptor handles JWT authentication for gRPC calls
+// Context key type for type-safe context values
+type contextKey struct{ name string }
+
+var (
+	userIDKey = &contextKey{"userID"}
+)
+
 type AuthInterceptor struct {
 	authService AuthService
-	// Routes that don't need authentication
 	publicPaths map[string]bool
 }
 
@@ -56,13 +62,24 @@ func (i *AuthInterceptor) Unary() grpc.UnaryServerInterceptor {
 		}
 
 		// Verify token
-		claims, err := i.authService.VerifyToken(ctx, token)
+		verifiedToken, err := i.authService.VerifyToken(ctx, token)
 		if err != nil {
 			return nil, status.Errorf(codes.Unauthenticated, "invalid token: %v", err)
 		}
 
-		// Add claims to context
-		newCtx := context.WithValue(ctx, "claims", claims)
+		// Extract user ID from claims
+		claims, ok := verifiedToken.Claims.(jwt.MapClaims)
+		if !ok {
+			return nil, status.Error(codes.Unauthenticated, "invalid token claims")
+		}
+
+		userID, ok := claims["sub"].(string)
+		if !ok || userID == "" {
+			return nil, status.Error(codes.Unauthenticated, "missing user ID in token")
+		}
+
+		// Add user ID to context
+		newCtx := context.WithValue(ctx, userIDKey, userID)
 
 		return handler(newCtx, req)
 	}
