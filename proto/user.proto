@@ -10,7 +10,7 @@ option go_package = "github.com/mattiusz/based_backend/internal/gen/proto/v1";
 service UserService {
   rpc CreateUser(CreateUserRequest) returns (User);
   rpc UpdateUser(UpdateUserRequest) returns (User);
-  rpc GetUser(GetUserRequest) returns (User);
+  rpc GetUser(google.protobuf.Empty) returns (User);
   rpc DeleteUser(google.protobuf.Empty) returns (google.protobuf.Empty);
 }
 
@@ -25,6 +25,7 @@ message User {
   string display_name = 1;
   google.protobuf.Timestamp birthday = 2;
   UserGender gender = 3;
+  bytes user_id = 4;
 }
 
 message CreateUserRequest {
@@ -38,8 +39,3 @@ message UpdateUserRequest {
   google.protobuf.Timestamp birthday = 2;
   UserGender gender = 3;
 }
-
-message GetUserRequest {
-  bytes user_id = 1;
-}
-

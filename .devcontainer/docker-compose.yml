@@ -46,7 +46,7 @@ services:
       KC_HEALTH_ENABLED: true
     ports:
       - "8080:8080"
-    command: start-dev
+    command: start-dev --http-enabled=true --https-port=0
     depends_on:
       postgresql:
         condition: service_healthy

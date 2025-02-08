@@ -24,6 +24,34 @@ func NewUserService(repo repositories.UserRepository) pb.UserServiceServer {
 	return &userService{userRepo: repo}
 }
 
+func (s *userService) CreateUser(ctx context.Context, req *pb.CreateUserRequest) (*pb.User, error) {
+	authenticatedUserID, err := interceptors.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	userID := convertUUID([]byte(authenticatedUserID))
+
+	params := &sqlc.CreateUserParams{
+		UserID:   userID,
+		Name:     req.DisplayName,
+		Birthday: pgtype.Date{Time: req.Birthday.AsTime(), Valid: req.Birthday != nil},
+		Gender:   convertPBGenderToSQL(req.Gender),
+	}
+
+	user, err := s.userRepo.CreateUser(ctx, params)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to create user: %v", err)
+	}
+
+	return &pb.User{
+		DisplayName: user.Name,
+		Birthday:    timestamppb.New(user.Birthday.Time),
+		Gender:      convertSQLGenderToPB(user.Gender),
+		UserId:      []byte(authenticatedUserID),
+	}, nil
+}
+
 func (s *userService) UpdateUser(ctx context.Context, req *pb.UpdateUserRequest) (*pb.User, error) {
 	authenticatedUserID, err := interceptors.GetUserIDFromContext(ctx)
 	if err != nil {
@@ -53,18 +81,17 @@ func (s *userService) UpdateUser(ctx context.Context, req *pb.UpdateUserRequest)
 		DisplayName: updatedUser.Name,
 		Birthday:    timestamppb.New(updatedUser.Birthday.Time),
 		Gender:      convertSQLGenderToPB(updatedUser.Gender),
+		UserId:      []byte(authenticatedUserID),
 	}, nil
 }
 
-func (s *userService) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.User, error) {
-	if len(req.UserId) == 0 {
-		return nil, status.Error(codes.InvalidArgument, "user_id is required")
+func (s *userService) GetUser(ctx context.Context, _ *emptypb.Empty) (*pb.User, error) {
+	authenticatedUserID, err := interceptors.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	userID := pgtype.UUID{
-		Bytes: [16]byte(req.UserId),
-		Valid: true,
-	}
+	userID := convertUUID([]byte(authenticatedUserID))
 
 	user, err := s.userRepo.GetUserByID(ctx, userID)
 	if err != nil {
@@ -75,6 +102,7 @@ func (s *userService) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.
 		DisplayName: user.Name,
 		Birthday:    timestamppb.New(user.Birthday.Time),
 		Gender:      convertSQLGenderToPB(user.Gender),
+		UserId:      []byte(authenticatedUserID),
 	}, nil
 }
 
