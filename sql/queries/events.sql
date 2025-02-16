@@ -77,7 +77,7 @@ GROUP BY
     e.thumbnail,
     e.categories;
 
--- name: GetNearbyEventsByStatusAndGender :many
+-- name: GetNearbyEventsByStatus :many
 SELECT 
     e.event_id,
     e.created_at,
@@ -102,6 +102,7 @@ SELECT
     COUNT(DISTINCT ea.user_id) as number_of_attendees
 FROM events e
 LEFT JOIN event_attendees ea ON e.event_id = ea.event_id
+JOIN users u ON u.user_id = $5  -- Join users table once at the top level
 WHERE 
     e.status = $1 AND
     ST_DWithin(
@@ -110,9 +111,9 @@ WHERE
         $4  -- radius in meters
     ) AND
     CASE 
-        WHEN $5 = 'female' THEN e.allow_female = true
-        WHEN $5 = 'male' THEN e.allow_male = true
-        WHEN $5 = 'diverse' THEN e.allow_diverse = true
+        WHEN u.gender = 'female' THEN e.allow_female = true
+        WHEN u.gender = 'male' THEN e.allow_male = true
+        WHEN u.gender = 'diverse' THEN e.allow_diverse = true
     END
 GROUP BY 
     e.event_id,

@@ -10,7 +10,7 @@ import (
 type EventRepository interface {
 	CreateEvent(ctx context.Context, req *sqlc.CreateEventParams) (*sqlc.CreateEventRow, error)
 	GetEventByID(ctx context.Context, eventID pgtype.UUID) (*sqlc.GetEventByIDRow, error)
-	GetNearbyEvents(ctx context.Context, params *sqlc.GetNearbyEventsByStatusAndGenderParams) ([]sqlc.GetNearbyEventsByStatusAndGenderRow, error)
+	GetNearbyEvents(ctx context.Context, params *sqlc.GetNearbyEventsByStatusParams) ([]sqlc.GetNearbyEventsByStatusRow, error)
 	GetUserEvents(ctx context.Context, params *sqlc.GetUserEventsParams) ([]sqlc.GetUserEventsRow, error)
 	GetEventAttendeeStats(ctx context.Context, eventID pgtype.UUID) (*sqlc.GetEventAttendeeStatsRow, error)
 	UpdateEvent(ctx context.Context, params *sqlc.UpdateEventParams) (*sqlc.UpdateEventRow, error)
@@ -43,8 +43,8 @@ func (r *eventRepository) GetEventByID(ctx context.Context, eventID pgtype.UUID)
 	return &event, nil
 }
 
-func (r *eventRepository) GetNearbyEvents(ctx context.Context, params *sqlc.GetNearbyEventsByStatusAndGenderParams) ([]sqlc.GetNearbyEventsByStatusAndGenderRow, error) {
-	events, err := r.queries.GetNearbyEventsByStatusAndGender(ctx, *params)
+func (r *eventRepository) GetNearbyEvents(ctx context.Context, params *sqlc.GetNearbyEventsByStatusParams) ([]sqlc.GetNearbyEventsByStatusRow, error) {
+	events, err := r.queries.GetNearbyEventsByStatus(ctx, *params)
 	if err != nil {
 		return nil, err
 	}

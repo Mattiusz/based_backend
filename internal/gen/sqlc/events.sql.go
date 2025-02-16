@@ -271,7 +271,7 @@ func (q *Queries) GetEventByID(ctx context.Context, eventID pgtype.UUID) (GetEve
 	return i, err
 }
 
-const getNearbyEventsByStatusAndGender = `-- name: GetNearbyEventsByStatusAndGender :many
+const getNearbyEventsByStatus = `-- name: GetNearbyEventsByStatus :many
 SELECT 
     e.event_id,
     e.created_at,
@@ -296,6 +296,7 @@ SELECT
     COUNT(DISTINCT ea.user_id) as number_of_attendees
 FROM events e
 LEFT JOIN event_attendees ea ON e.event_id = ea.event_id
+JOIN users u ON u.user_id = $5  -- Join users table once at the top level
 WHERE 
     e.status = $1 AND
     ST_DWithin(
@@ -304,9 +305,9 @@ WHERE
         $4  -- radius in meters
     ) AND
     CASE 
-        WHEN $5 = 'female' THEN e.allow_female = true
-        WHEN $5 = 'male' THEN e.allow_male = true
-        WHEN $5 = 'diverse' THEN e.allow_diverse = true
+        WHEN u.gender = 'female' THEN e.allow_female = true
+        WHEN u.gender = 'male' THEN e.allow_male = true
+        WHEN u.gender = 'diverse' THEN e.allow_diverse = true
     END
 GROUP BY 
     e.event_id,
@@ -328,16 +329,16 @@ ORDER BY distance_meters
 LIMIT $6
 `
 
-type GetNearbyEventsByStatusAndGenderParams struct {
+type GetNearbyEventsByStatusParams struct {
 	Status        EventStatusType `json:"status"`
 	StMakepoint   interface{}     `json:"st_makepoint"`
 	StMakepoint_2 interface{}     `json:"st_makepoint_2"`
 	StDwithin     interface{}     `json:"st_dwithin"`
-	Column5       interface{}     `json:"column_5"`
+	UserID        pgtype.UUID     `json:"user_id"`
 	Limit         int32           `json:"limit"`
 }
 
-type GetNearbyEventsByStatusAndGenderRow struct {
+type GetNearbyEventsByStatusRow struct {
 	EventID           pgtype.UUID         `json:"event_id"`
 	CreatedAt         pgtype.Timestamptz  `json:"created_at"`
 	CreatorID         pgtype.UUID         `json:"creator_id"`
@@ -358,22 +359,22 @@ type GetNearbyEventsByStatusAndGenderRow struct {
 	NumberOfAttendees int64               `json:"number_of_attendees"`
 }
 
-func (q *Queries) GetNearbyEventsByStatusAndGender(ctx context.Context, arg GetNearbyEventsByStatusAndGenderParams) ([]GetNearbyEventsByStatusAndGenderRow, error) {
-	rows, err := q.db.Query(ctx, getNearbyEventsByStatusAndGender,
+func (q *Queries) GetNearbyEventsByStatus(ctx context.Context, arg GetNearbyEventsByStatusParams) ([]GetNearbyEventsByStatusRow, error) {
+	rows, err := q.db.Query(ctx, getNearbyEventsByStatus,
 		arg.Status,
 		arg.StMakepoint,
 		arg.StMakepoint_2,
 		arg.StDwithin,
-		arg.Column5,
+		arg.UserID,
 		arg.Limit,
 	)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetNearbyEventsByStatusAndGenderRow
+	var items []GetNearbyEventsByStatusRow
 	for rows.Next() {
-		var i GetNearbyEventsByStatusAndGenderRow
+		var i GetNearbyEventsByStatusRow
 		if err := rows.Scan(
 			&i.EventID,
 			&i.CreatedAt,

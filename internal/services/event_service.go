@@ -24,6 +24,46 @@ func NewEventService(repo repositories.EventRepository) pb.EventServiceServer {
 	return &eventService{eventRepo: repo}
 }
 
+func (s *eventService) GetEventByID(ctx context.Context, req *pb.GetEventByIDRequest) (*pb.Event, error) {
+	if len(req.EventId) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "event_id is required")
+	}
+
+	eventID := convertUUID(req.EventId)
+	event, err := s.eventRepo.GetEventByID(ctx, eventID)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get event: %v", err)
+	}
+
+	return convertGetEventByIdResponseToEvent(*event), nil
+}
+
+func (s *eventService) GetNearbyEvents(ctx context.Context, req *pb.GetNearbyEventsRequest) (*pb.GetNearbyEventsResponse, error) {
+	authenticatedUserID, err := interceptors.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	if req.Location == nil {
+		return nil, status.Error(codes.InvalidArgument, "location is required")
+	}
+
+	params := &sqlc.GetNearbyEventsByStatusParams{
+		StMakepoint:   req.Location.Longitude,
+		StMakepoint_2: req.Location.Latitude,
+		UserID:        convertUUID([]byte(authenticatedUserID)),
+		StDwithin:     req.RadiusMeters,
+		Limit:         req.Limit,
+	}
+
+	events, err := s.eventRepo.GetNearbyEvents(ctx, params)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get nearby events: %v", err)
+	}
+
+	return convertGetNearbyEventsResponseToProto(events), nil
+}
+
 func (s *eventService) CreateEvent(ctx context.Context, req *pb.CreateEventRequest) (*pb.Event, error) {
 	authenticatedUserID, err := interceptors.GetUserIDFromContext(ctx)
 	if err != nil {
@@ -73,6 +113,24 @@ func (s *eventService) CreateEvent(ctx context.Context, req *pb.CreateEventReque
 	}
 
 	return convertCreateEventResponseToEvent(createdEvent), nil
+}
+
+func (s *eventService) GetUserEvents(ctx context.Context, req *pb.GetUserEventsRequest) (*pb.GetUserEventsResponse, error) {
+	authenticatedUserID, err := interceptors.GetUserIDFromContext(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	params := &sqlc.GetUserEventsParams{
+		UserID: convertUUID([]byte(authenticatedUserID)),
+	}
+
+	events, err := s.eventRepo.GetUserEvents(ctx, params)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "failed to get user events: %v", err)
+	}
+
+	return convertGetUserEventsResponseToEvent(events), nil
 }
 
 func (s *eventService) JoinEvent(ctx context.Context, req *pb.JoinEventRequest) (*emptypb.Empty, error) {
@@ -243,7 +301,7 @@ func convertGetEventByIdResponseToEvent(event sqlc.GetEventByIDRow) *pb.Event {
 	}
 }
 
-func convertGetNearbyEventsResponseToProto(events []sqlc.GetNearbyEventsByStatusAndGenderRow) *pb.GetNearbyEventsResponse {
+func convertGetNearbyEventsResponseToProto(events []sqlc.GetNearbyEventsByStatusRow) *pb.GetNearbyEventsResponse {
 	response := &pb.GetNearbyEventsResponse{
 		Events: make([]*pb.EventWithDistance, len(events)),
 	}

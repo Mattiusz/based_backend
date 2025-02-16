@@ -96,9 +96,8 @@ message GetEventByIDRequest {
 message GetNearbyEventsRequest {
   Location location = 1;
   double radius_meters = 2;
-  UserGender gender = 3;
-  EventStatus status = 4;
-  int32 limit = 5;
+  EventStatus status = 3;
+  int32 limit = 4;
 }
 
 message EventWithDistance {
