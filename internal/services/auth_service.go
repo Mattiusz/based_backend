@@ -2,8 +2,11 @@ package services
 
 import (
 	"context"
+	"crypto/rsa"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"net/http"
 	"strings"
 	"time"
@@ -114,24 +117,28 @@ func (s *AuthService) VerifyToken(ctx context.Context, tokenString string) (*jwt
 
 // fetchPublicKeys retrieves the public keys from Keycloak
 func (s *AuthService) fetchPublicKeys() error {
-	url := fmt.Sprintf("http://%s:%s/realms/%s",
+	// Construct the JWKS (JSON Web Key Set) endpoint URL
+	jwksURL := fmt.Sprintf("http://%s:%s/realms/%s/protocol/openid-connect/certs",
 		s.config.KeycloakHost,
 		s.config.KeycloakPort,
 		s.config.KeycloakRealm)
 
-	resp, err := s.httpClient.Get(url)
+	// Make HTTP request to fetch the keys
+	resp, err := s.httpClient.Get(jwksURL)
 	if err != nil {
-		return fmt.Errorf("failed to fetch public keys: %v", err)
+		return fmt.Errorf("failed to fetch JWKS: %v", err)
 	}
 	defer resp.Body.Close()
 
+	// Check response status
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to fetch public keys: status code %d", resp.StatusCode)
+		return fmt.Errorf("unexpected status code from JWKS endpoint: %d", resp.StatusCode)
 	}
 
+	// Parse the response
 	var keycloakKeys KeycloakKeys
 	if err := json.NewDecoder(resp.Body).Decode(&keycloakKeys); err != nil {
-		return fmt.Errorf("failed to decode public keys: %v", err)
+		return fmt.Errorf("failed to decode JWKS response: %v", err)
 	}
 
 	// Clear existing keys
@@ -139,15 +146,43 @@ func (s *AuthService) fetchPublicKeys() error {
 
 	// Parse and store the public keys
 	for _, key := range keycloakKeys.Keys {
-		if key.Use == "sig" && key.Kty == "RSA" {
-			publicKey, err := jwt.ParseRSAPublicKeyFromPEM([]byte(fmt.Sprintf(`-----BEGIN PUBLIC KEY-----
-%s
------END PUBLIC KEY-----`, key.N)))
-			if err != nil {
-				return fmt.Errorf("failed to parse public key: %v", err)
-			}
-			s.publicKeys[key.Kid] = publicKey
+		if key.Use != "sig" || key.Kty != "RSA" {
+			continue // Skip non-RSA signing keys
 		}
+
+		// Decode the modulus and exponent
+		nBytes, err := base64.RawURLEncoding.DecodeString(key.N)
+		if err != nil {
+			return fmt.Errorf("failed to decode key modulus: %v", err)
+		}
+
+		eBytes, err := base64.RawURLEncoding.DecodeString(key.E)
+		if err != nil {
+			return fmt.Errorf("failed to decode key exponent: %v", err)
+		}
+
+		// Convert the modulus bytes to big.Int
+		n := new(big.Int)
+		n.SetBytes(nBytes)
+
+		// Convert the exponent bytes to int
+		var e int
+		for i := 0; i < len(eBytes); i++ {
+			e = e<<8 | int(eBytes[i])
+		}
+
+		// Create the RSA public key
+		publicKey := &rsa.PublicKey{
+			N: n,
+			E: e,
+		}
+
+		// Store the key with its ID
+		s.publicKeys[key.Kid] = publicKey
+	}
+
+	if len(s.publicKeys) == 0 {
+		return fmt.Errorf("no valid RSA signing keys found in JWKS response")
 	}
 
 	return nil

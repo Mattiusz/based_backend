@@ -103,7 +103,7 @@ func LoadConfig() (*Config, error) {
 
 	keycloakClientID := os.Getenv("KEYCLOAK_CLIENT_ID")
 	if keycloakClientID == "" {
-		keycloakClientID = "based-backend" // default client ID
+		keycloakClientID = "go-backend" // default client ID
 	}
 
 	keycloakClientSecret := os.Getenv("KEYCLOAK_CLIENT_SECRET")
