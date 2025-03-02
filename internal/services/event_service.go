@@ -49,8 +49,9 @@ func (s *eventService) GetNearbyEvents(ctx context.Context, req *pb.GetNearbyEve
 	}
 
 	params := &sqlc.GetNearbyEventsByStatusParams{
-		StMakepoint:   req.Location.Longitude,
-		StMakepoint_2: req.Location.Latitude,
+		Status:        convertPbStatusToSQL(req.Status),
+		StMakepoint:   req.Location.Latitude,
+		StMakepoint_2: req.Location.Longitude,
 		UserID:        convertUUID([]byte(authenticatedUserID)),
 		StDwithin:     req.RadiusMeters,
 		Limit:         req.Limit,

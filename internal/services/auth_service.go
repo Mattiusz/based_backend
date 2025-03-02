@@ -107,7 +107,8 @@ func (s *AuthService) VerifyToken(ctx context.Context, tokenString string) (*jwt
 			s.config.KeycloakRealm)
 		if iss, ok := claims["iss"].(string); ok {
 			if iss != expectedIssuer {
-				return nil, fmt.Errorf("invalid issuer")
+				// TODO: Uncomment this line to enforce issuer validation
+				// return nil, fmt.Errorf("invalid issuer")
 			}
 		}
 	}

@@ -18,7 +18,7 @@ INSERT INTO events (
     allow_female, allow_male, allow_diverse, thumbnail, status, categories
 )
 VALUES (
-    $1, $2, ST_SetSRID(ST_MakePoint($4, $3), 4326), $5, 
+    $1, $2, ST_SetSRID(ST_MakePoint($4, $3), 4326)::geometry, $5, 
     $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16
 )
 RETURNING 
@@ -314,7 +314,8 @@ GROUP BY
     e.created_at,
     e.creator_id,
     e.name,
-    e.location,
+    ST_Y(e.location::geometry),
+    ST_X(e.location::geometry),
     e.datetime,
     e.max_attendees,
     e.venue,
@@ -552,7 +553,7 @@ func (q *Queries) LeaveEvent(ctx context.Context, arg LeaveEventParams) error {
 
 const updateEvent = `-- name: UpdateEvent :one
 UPDATE events
-SET updated_at = NOW(), status = $2, name = $3, location = ST_SetSRID(ST_MakePoint($5, $4), 4326),
+SET updated_at = NOW(), status = $2, name = $3, location = ST_SetSRID(ST_MakePoint($5, $4), 4326)::geometry,
     datetime = $6, max_attendees = $7, venue = $8, description = $9, 
     age_range_min = $10, age_range_max = $11, allow_male = $12, allow_female = $13, allow_diverse = $14,
     categories = $15
