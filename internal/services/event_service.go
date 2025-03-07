@@ -124,6 +124,7 @@ func (s *eventService) GetUserEvents(ctx context.Context, req *pb.GetUserEventsR
 
 	params := &sqlc.GetUserEventsParams{
 		UserID: convertUUID([]byte(authenticatedUserID)),
+		Limit:  req.Limit,
 	}
 
 	events, err := s.eventRepo.GetUserEvents(ctx, params)
