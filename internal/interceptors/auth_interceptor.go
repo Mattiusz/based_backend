@@ -105,15 +105,26 @@ func (i *AuthInterceptor) Stream() grpc.StreamServerInterceptor {
 		}
 
 		// Verify token
-		claims, err := i.authService.VerifyToken(stream.Context(), token)
+		verifiedToken, err := i.authService.VerifyToken(stream.Context(), token)
 		if err != nil {
 			return status.Errorf(codes.Unauthenticated, "invalid token: %v", err)
 		}
 
-		// Wrap the stream with the authenticated context
+		// Extract user ID from claims
+		claims, ok := verifiedToken.Claims.(jwt.MapClaims)
+		if !ok {
+			return status.Error(codes.Unauthenticated, "invalid token claims")
+		}
+
+		userID, ok := claims["sub"].(string)
+		if !ok || userID == "" {
+			return status.Error(codes.Unauthenticated, "missing user ID in token")
+		}
+
+		// Wrap the stream with the authenticated context that includes the userID
 		wrappedStream := &wrappedServerStream{
 			ServerStream: stream,
-			ctx:          context.WithValue(stream.Context(), "claims", claims),
+			ctx:          context.WithValue(stream.Context(), userIDKey, userID),
 		}
 
 		return handler(srv, wrappedStream)
